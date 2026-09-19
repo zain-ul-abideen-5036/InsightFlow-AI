@@ -1,0 +1,41 @@
+# Secret scanning configuration.
+#
+# CI runs gitleaks over the full history on every push and pull request. This
+# file exists only to record the two strings that look like credentials and are
+# not, with the reason. Every other rule stays on.
+#
+# An allowlist is a liability if it is broad, so these are pinned to the exact
+# literal in the exact two files that use it. A real secret appearing anywhere
+# else — including in these same files — is still caught.
+
+title = "InsightFlow AI"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API key"
+regex = '''(?i)(?:key|api|token|secret|password|passwd)[a-z0-9_.\-]{0,20}[\s]*[:=][\s]*['"]([0-9a-zA-Z\-_=]{16,64})['"]'''
+[rules.allowlist]
+description = """
+The password the acceptance script and the browser tests use to create
+throwaway accounts during a run. It is not a credential to anything: the
+accounts it creates are made and abandoned inside a single test execution
+against a local or CI database. Naming it here keeps the scanner useful rather
+than routinely ignored.
+"""
+regexes = ['''CorrectHorse42!''']
+paths = [
+  '''backend/scripts/acceptance_check\.py''',
+  '''frontend/e2e/journey\.spec\.ts''',
+]
+
+[allowlist]
+description = "Paths with no secrets to find"
+paths = [
+  '''package-lock\.json''',
+  '''\.png$''',
+  '''\.svg$''',
+  '''docs/screenshots/''',
+]

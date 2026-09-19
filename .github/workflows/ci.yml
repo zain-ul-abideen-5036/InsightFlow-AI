@@ -182,3 +182,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Two throwaway test-account passwords are allowlisted by exact
+          # literal and exact path; see .gitleaks.toml for why.
+          GITLEAKS_CONFIG: .gitleaks.toml
