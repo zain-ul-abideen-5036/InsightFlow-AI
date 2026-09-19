@@ -1,0 +1,184 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        working-directory: backend
+        run: pytest -q
+
+      - name: Verify migrations apply to an empty database
+        working-directory: backend
+        env:
+          # A fresh file, so this genuinely exercises the migration path rather
+          # than a database the app already created.
+          DATABASE_URL: sqlite:///./ci-migration-check.db
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+
+      - name: Verify the models and the migrations agree
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./ci-drift-check.db
+        run: |
+          # A model changed without a migration is invisible in development,
+          # where tables are created from the models directly, and fails only on
+          # the first deploy to a real database. Autogenerating against a fully
+          # migrated schema must produce an empty migration.
+          alembic upgrade head
+          alembic revision --autogenerate -m drift-check
+          latest=$(ls -t alembic/versions/*drift_check.py | head -1)
+          if grep -qE '^\s*op\.' "$latest"; then
+            echo "::error::Models have changed without a matching migration:"
+            cat "$latest"
+            exit 1
+          fi
+          rm -f "$latest"
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Production build
+        working-directory: frontend
+        env:
+          BACKEND_API_URL: http://localhost:8000
+        run: npm run build
+
+  acceptance:
+    name: Full-stack acceptance
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          SECRET_KEY: ci-only-secret-value-not-used-anywhere-real-at-all
+          # No model in CI: the acceptance run then also proves the product is
+          # fully functional with AI switched off.
+          AI_ENABLED: "false"
+          AI_PROVIDER: none
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/v1/health && break
+            sleep 1
+          done
+
+      - name: Build and start frontend
+        working-directory: frontend
+        env:
+          BACKEND_API_URL: http://127.0.0.1:8000
+        run: |
+          npm run build
+          npx next start -p 3000 &
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:3000/ && break
+            sleep 1
+          done
+
+      - name: Acceptance check
+        working-directory: backend
+        run: python scripts/acceptance_check.py
+
+      - name: Browser end-to-end tests
+        working-directory: frontend
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test --project=chromium
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
+  security:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Gitleaks needs history to scan commits, not just the working tree.
+          fetch-depth: 0
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

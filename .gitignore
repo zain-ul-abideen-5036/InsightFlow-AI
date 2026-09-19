@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Next.js
+.next/
+out/
+build/
+dist/
+.vercel
+next-env.d.ts
+*.tsbuildinfo
+
+# Testing
+coverage/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Local data / storage
+backend/storage/
+backend/*.db
+backend/*.db-journal
+backend/*.sqlite3
+storage/
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Misc
+.cache/
+.turbo/
+.ruff_cache/
+.mypy_cache/
+
+# Playwright
+test-results/
+playwright-report/
+frontend-server.log
+
+# Pytest cache
+.pytest_cache/

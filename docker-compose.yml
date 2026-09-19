@@ -1,0 +1,65 @@
+# InsightFlow AI — local stack.
+#
+#   docker compose up -d
+#
+# Brings up PostgreSQL and the analytics backend. The frontend is run with
+# `npm run dev` alongside, because developing against a hot-reloading Next.js
+# server is faster than rebuilding an image on every change.
+#
+# Ollama is intentionally NOT containerised here: it is usually already
+# installed on the host (and on macOS it needs host GPU access that a Linux
+# container cannot get). `host.docker.internal` reaches it from the backend.
+
+name: insightflow
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: insightflow
+      POSTGRES_PASSWORD: insightflow
+      POSTGRES_DB: insightflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # The backend must not start migrating before Postgres accepts
+      # connections, or the first deploy races and fails.
+      test: ["CMD-SHELL", "pg_isready -U insightflow -d insightflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://insightflow:insightflow@postgres:5432/insightflow
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-secret-change-me}
+      CORS_ORIGINS: http://localhost:3000
+      STORAGE_DIR: /app/storage
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      AI_ENABLED: ${AI_ENABLED:-true}
+      # Reaches an Ollama instance running on the host machine.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct}
+      LOG_JSON: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      # Uploaded files must survive a container rebuild.
+      - backend-storage:/app/storage
+    extra_hosts:
+      # Linux does not provide host.docker.internal by default.
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres-data:
+  backend-storage:
