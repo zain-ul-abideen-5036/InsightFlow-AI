@@ -326,17 +326,40 @@ def investigate(
     if investigation_obj is None:
         investigation_obj = Investigation.from_dict(investigation_dict)
 
+    # Everything this response needs from the database has been read. Release
+    # the transaction before the model call, which takes 60-180 seconds on local
+    # inference: holding a connection open for that long starves the pool and,
+    # on SQLite, makes every concurrent writer wait out its busy timeout and
+    # fail with "database is locked".
+    anomaly_snapshot = AnomalyOut.model_validate(anomaly)
+    anomaly_id_value = anomaly.id
+    db.commit()
+
     outcome = narrate_investigation(
         investigation_obj, dataset_name=dataset.name, currency=workspace.currency
     )
 
     if not outcome.is_fallback:
-        anomaly.narrative = outcome.structured
-        db.commit()
-        db.refresh(anomaly)
+        # Best effort, deliberately. This is a cache: failing to write it costs
+        # one regeneration on the next visit, while failing the request costs
+        # the user an answer that has already been computed and validated.
+        try:
+            fresh = db.get(Anomaly, anomaly_id_value)
+            if fresh is not None:
+                fresh.narrative = outcome.structured
+                db.commit()
+        except Exception:  # noqa: BLE001
+            db.rollback()
+            logger.warning(
+                "could not cache the investigation narrative",
+                extra={"anomaly_id": str(anomaly_id_value)},
+                exc_info=True,
+            )
 
-    return _respond(
-        outcome.structured,
+    return InvestigationResponse(
+        anomaly=anomaly_snapshot,
+        investigation=investigation_dict,
+        narrative=outcome.structured,
         is_fallback=outcome.is_fallback,
         provider=outcome.provider,
         model=outcome.model,

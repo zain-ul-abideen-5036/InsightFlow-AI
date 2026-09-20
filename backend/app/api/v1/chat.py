@@ -154,6 +154,18 @@ def ask(
         )
     )
 
+    # Commit the question before doing any slow work.
+    #
+    # Everything below — the pandas analysis, and then a model call that takes
+    # 60-180 seconds on local inference — used to run inside this transaction.
+    # On SQLite the flush above takes a write lock, so every other writer in the
+    # process spent that whole time waiting and then failed with "database is
+    # locked"; on PostgreSQL it holds a pooled connection open for minutes to do
+    # nothing. Committing here also means the user's question survives a model
+    # failure or a restart mid-answer.
+    session_id = chat_session.id
+    db.commit()
+
     # -- Deterministic analysis -------------------------------------------
     ctx = _build_context_for(dataset, workspace)
     execution = answer_question(payload.question, ctx)
@@ -176,7 +188,7 @@ def ask(
 
     message = ChatMessage(
         workspace_id=workspace.id,
-        session_id=chat_session.id,
+        session_id=session_id,
         role=MessageRole.ASSISTANT,
         content=content,
         plan=execution.plan.to_dict(),
