@@ -152,11 +152,26 @@ def overview(workspace: CurrentWorkspace, db: DbSession) -> OverviewResponse:
         .limit(1)
     )
 
+    # An analysis that is queued or running is not "no analysis". Reporting
+    # only completed runs left the dashboard telling a user to go and start an
+    # analysis that was already under way — which is the first screen a demo
+    # visitor sees, and the one moment the product most needs to be believed.
+    running = db.scalar(
+        select(Analysis)
+        .where(
+            Analysis.workspace_id == workspace.id,
+            Analysis.status.in_([JobStatus.QUEUED, JobStatus.RUNNING]),
+        )
+        .order_by(Analysis.created_at.desc())
+        .limit(1)
+    )
+
     if latest is None:
         return OverviewResponse(
             workspace=WorkspaceOut.model_validate(workspace),
             has_data=dataset_count > 0,
             latest_analysis=None,
+            running_analysis=AnalysisOut.model_validate(running) if running else None,
             metrics=[],
             insights=[],
             anomalies=[],
@@ -220,6 +235,10 @@ def overview(workspace: CurrentWorkspace, db: DbSession) -> OverviewResponse:
         workspace=WorkspaceOut.model_validate(workspace),
         has_data=True,
         latest_analysis=AnalysisOut.model_validate(latest),
+        # A re-run in flight over an already-analysed workspace: the dashboard
+        # keeps showing the last good result and notes that a newer one is
+        # coming, rather than blanking out.
+        running_analysis=AnalysisOut.model_validate(running) if running else None,
         metrics=metric_payload,
         insights=[InsightOut.model_validate(i) for i in insights],
         anomalies=[AnomalyOut.model_validate(a) for a in anomalies],

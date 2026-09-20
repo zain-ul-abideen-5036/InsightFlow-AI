@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -20,12 +21,13 @@ import { EmptyState } from "@/components/states/empty-state";
 import { Unavailable } from "@/components/states/unavailable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnalysisProgress } from "@/features/analysis/analysis-progress";
 import { AnomalyRow } from "@/features/anomalies/anomaly-row";
 import { KpiCard } from "@/features/dashboard/kpi-card";
 import { InsightCard } from "@/features/insights/insight-card";
 import { api, queryKeys } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/utils";
-import type { Overview, SegmentsSection, TrendsSection } from "@/types/api";
+import type { Analysis, Overview, SegmentsSection, TrendsSection } from "@/types/api";
 
 export function OverviewDashboard({
   workspaceId,
@@ -38,17 +40,30 @@ export function OverviewDashboard({
     queryKey: queryKeys.overview(workspaceId),
     queryFn: () => api.overview(workspaceId),
     initialData,
+    // While an analysis is in flight, keep checking: the dashboard should fill
+    // in by itself rather than wait for the visitor to think to reload.
+    refetchInterval: (query) =>
+      query.state.data?.running_analysis ? 2000 : false,
   });
 
   const overview = data ?? initialData;
   const currency = overview.workspace.currency;
+  const running = overview.running_analysis;
 
   if (!overview.has_data) {
     return <NoDataState />;
   }
 
   if (!overview.latest_analysis) {
-    return <NotAnalysedState />;
+    // An analysis already under way is not "not analysed yet". Telling someone
+    // to go and start work that is already running — which is exactly what a
+    // demo visitor used to see on their first screen — reads as the product
+    // not knowing its own state.
+    return running ? (
+      <AnalysisRunningState workspaceId={workspaceId} analysis={running} />
+    ) : (
+      <NotAnalysedState />
+    );
   }
 
   const summary = overview.latest_analysis.summary;
@@ -293,6 +308,36 @@ function NoDataState() {
           </Button>
         }
       />
+    </div>
+  );
+}
+
+function AnalysisRunningState({
+  workspaceId,
+  analysis,
+}: {
+  workspaceId: string;
+  analysis: Analysis;
+}) {
+  const router = useRouter();
+
+  return (
+    <div className="mx-auto max-w-2xl py-12">
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Analysing your data</h1>
+        <p className="text-md text-muted-foreground">
+          Working out what your columns mean, computing the metrics your data supports,
+          and looking for what changed. This page fills in on its own.
+        </p>
+      </div>
+      <div className="mt-8">
+        <AnalysisProgress
+          workspaceId={workspaceId}
+          analysisId={analysis.id}
+          initialData={analysis}
+          onComplete={() => router.refresh()}
+        />
+      </div>
     </div>
   );
 }

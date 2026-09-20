@@ -394,6 +394,11 @@ class OverviewResponse(BaseModel):
     workspace: WorkspaceOut
     has_data: bool
     latest_analysis: AnalysisOut | None
+    # An analysis currently queued or running, if there is one. Distinct from
+    # `latest_analysis`, which is always the most recent *completed* run: a
+    # workspace can have finished results and a newer analysis in flight at the
+    # same time, and the dashboard needs to tell those apart.
+    running_analysis: AnalysisOut | None = None
     metrics: list[dict[str, Any]]
     insights: list[InsightOut]
     anomalies: list[AnomalyOut]

@@ -662,6 +662,9 @@ export interface Overview {
   workspace: Workspace;
   has_data: boolean;
   latest_analysis: Analysis | null;
+  /** Queued or running right now, if any. Distinct from `latest_analysis`,
+   *  which is always the most recent *completed* run. */
+  running_analysis: Analysis | null;
   metrics: Metric[];
   insights: Insight[];
   anomalies: Anomaly[];
