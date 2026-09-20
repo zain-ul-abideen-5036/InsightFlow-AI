@@ -6,13 +6,13 @@
 # Backend — 266 tests, ~3 minutes
 cd backend && pytest
 
-# Frontend — 46 tests, typecheck, lint
+# Frontend — 59 tests, typecheck, lint
 cd frontend && npm run check
 
 # Full-stack acceptance — 75 checks, needs both servers running
 cd backend && python scripts/acceptance_check.py
 
-# Browser end to end — 10 tests, needs both servers running
+# Browser end to end — 11 tests, needs both servers running
 cd frontend && npx playwright test --project=chromium
 ```
 
@@ -146,7 +146,7 @@ Every rejection is asserted to carry a message the uploader can act on.
 
 | File | Tests | Covers |
 | --- | --- | --- |
-| `tests/format.test.ts` | 32 | Currency, percentage, compact-number, date, and duration formatting |
+| `tests/format.test.ts` | 45 | Currency, percentage, compact-number, date, duration, and relative-time formatting |
 | `tests/components.test.tsx` | 14 | KPI cards, evidence panels, empty and error states, accessibility attributes |
 
 Formatting gets disproportionate attention because it is where a correct
@@ -196,7 +196,7 @@ It exits non-zero on any failure, so it can gate a deploy.
 cd frontend && npx playwright test --project=chromium
 ```
 
-Ten tests, one worker (they create accounts against a shared backend, and the
+Eleven tests, one worker (they create accounts against a shared backend, and the
 auth rate limiter is per client). Both servers must already be running —
 Playwright should not be managing a Python environment.
 
@@ -272,6 +272,6 @@ the test is loosened.
 | Suite | Count |
 | --- | --- |
 | Backend | 266 passed |
-| Frontend | 46 passed |
-| Playwright | 10 passed |
+| Frontend | 59 passed |
+| Playwright | 11 passed |
 | Acceptance | 75/75 |

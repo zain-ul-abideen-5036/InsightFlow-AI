@@ -25,9 +25,10 @@ Run against the repository exactly as found, with both servers already up
 | Lint | `npm run lint` | **hangs — never terminates** |
 | Lint (direct ESLint) | `eslint . --ext .ts,.tsx` | **7 errors, 3 warnings** |
 | Full-stack acceptance | `scripts/acceptance_check.py` | **75/75 passed** |
-| Browser E2E | `playwright test --project=chromium` | 10 passed |
+| Browser E2E | `playwright test --project=chromium` | **9 passed, 1 failed** |
 
-The headline claim that lint is clean **does not hold**. See finding B-1.
+Two headline claims do not hold: lint is not clean and does not even terminate
+(B-1, B-2), and the browser suite does not pass (B-3).
 
 ---
 
@@ -121,6 +122,7 @@ Severity: **P0** blocks launch · **P1** should be fixed before launch ·
 | --- | --- | --- |
 | B-1 | **P0** | **`npm run lint` hangs indefinitely.** ESLint 9.39.5 is installed but the config is the legacy `.eslintrc.json` format. `next lint` forces `ESLINT_USE_FLAT_CONFIG=false` and, on this platform, never terminates. CI would hang until the job timeout. |
 | B-2 | **P0** | **Lint is not clean.** Running ESLint directly in legacy mode reports **7 errors and 3 warnings**: unused imports in `analysis-progress.tsx` (`Button`), `anomalies-view.tsx` (`DIRECTIONS`), `answer-card.tsx` (`FileText`, `cn`), `overview-dashboard.tsx` (`Badge`), `dataset-workflow.tsx` (`router`), a forbidden `require()` in `tailwind.config.ts`, and three `react-hooks/exhaustive-deps` warnings in `anomalies-view.tsx` and `insights-view.tsx`. |
+| B-3 | **P0** | **The browser suite does not pass.** The full-journey test times out after 90 seconds waiting for an investigation to render. The endpoint runs the deterministic investigation *and* a synchronous model call before returning anything, and local CPU inference takes 60-180 seconds — so the page holds a spinner while the evidence it needs has already been computed. The test is the symptom; the product behaviour is the finding. |
 
 ### G. Correctness (found by the adversarial pass, not present in the original suite)
 
@@ -223,7 +225,7 @@ Recorded so that later passes do not "fix" things that are not broken.
 
 In dependency order.
 
-1. **Fix the quality gates** (B-1, B-2) — nothing else can be trusted until
+1. **Fix the quality gates** (B-1, B-2, B-3) — nothing else can be trusted until
    `npm run lint` terminates and passes.
 2. **Fix the rate-limit trust boundary** (C-1). This is the only P0 security
    finding and it is also a production *correctness* bug.

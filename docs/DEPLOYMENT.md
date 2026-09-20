@@ -368,7 +368,7 @@ loses data.
 
 ```bash
 cd backend
-pytest                      # all 180 tests, ~90 seconds
+pytest                      # all 266 tests, ~3 minutes
 pytest -q tests/test_analytics_math.py   # just the analytical correctness tests
 pytest --cov=app --cov-report=term-missing
 ```

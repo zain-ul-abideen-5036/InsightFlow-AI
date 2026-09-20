@@ -262,8 +262,25 @@ frontend/
 | Database | Managed Postgres (Neon / Supabase / Render) | `DATABASE_URL` |
 | AI | Ollama locally; any OpenAI-compatible endpoint in production | `AI_PROVIDER` |
 
-The frontend never talks to the database and holds no secrets beyond the session key.
-See [DEPLOYMENT.md](./DEPLOYMENT.md).
+The frontend never talks to the database. It holds two values that matter:
+`BACKEND_API_URL`, and `PROXY_SHARED_SECRET` — which is not a signing key but the
+credential that lets the backend believe the client address this layer forwards.
+
+There is deliberately no frontend signing key. The session cookie carries a JWT
+the backend already signed and verifies on every request; a second signature
+over a signature would detect no tampering the backend does not already reject.
+
+Health and readiness are separate endpoints answering separate questions.
+`/health` asks whether the process is alive, and an orchestrator that restarts
+on its failure is doing the right thing. `/ready` asks whether traffic should be
+routed here, and returns 503 when it should not — the correct response to a
+transient database outage is to stop sending requests, not to kill a process
+that will recover. The AI provider is deliberately not part of readiness:
+written explanations are an enhancement over a product that works without them,
+so an unreachable model must never take the service out of rotation.
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md), which opens by stating what runs on Vercel
+and what does not.
 
 ---
 
@@ -278,3 +295,11 @@ Recorded so they are understood as choices rather than omissions:
   predictable, testable, and cheaper than a tool-calling loop.
 - No real-time push (WebSockets); polling is sufficient for job progress at this scale.
 - Reports render on the web first; PDF export is a documented roadmap item.
+- No Redis. Rate limiting is per process, which means the budget multiplies
+  behind multiple replicas. That is documented rather than solved, because the
+  dependency is not yet earned at this scale.
+- No broker for analysis jobs. A thread pool plus the `analyses` table as the
+  job record. Progress is committed after every stage so it is durable and
+  pollable, and orphaned jobs are reconciled at start-up. The constraint this
+  imposes — `--workers 1`, scale by replica — is enforced in the Dockerfile.
+  Celery and Redis would add two failure modes to fix zero observed problems.
