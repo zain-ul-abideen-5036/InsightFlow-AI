@@ -61,8 +61,39 @@ test.describe("landing page", () => {
       "Understand your business",
     );
 
-    await page.getByRole("link", { name: /Analyze your data/i }).click();
+    // The same primary call to action appears in the hero and again in the
+    // closing section, which is deliberate — a reader who scrolls the whole
+    // page should not have to scroll back. `.first()` picks the hero one.
+    await page.getByRole("link", { name: /Analyze your data/i }).first().click();
     await expect(page).toHaveURL(/\/signup/);
+  });
+
+  test("offers a way in that needs no account", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByRole("link", { name: /Explore the live demo/i }).first().click();
+    await expect(page).toHaveURL(/\/demo/);
+
+    // The demo page must say what it is doing rather than show a bare spinner:
+    // it is creating a workspace and analysing fourteen thousand rows, and a
+    // visitor who sees nothing assumes it is broken.
+    await expect(page.getByRole("heading", { name: /Setting up your demo/i })).toBeVisible();
+    await expect(page.getByText(/NovaMart/i).first()).toBeVisible();
+
+    // And it must actually land in a workspace with the data already loading.
+    await page.waitForURL("**/overview", { timeout: 120_000 });
+
+    // Either state is correct here: the analysis may still be running, and the
+    // dashboard must say so rather than tell the visitor to go and start one.
+    await expect(
+      page.getByRole("heading", { name: /^(Overview|Analysing your data)$/, level: 1 }),
+    ).toBeVisible();
+
+    // Whichever it was, it must finish without the visitor doing anything.
+    await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible({
+      timeout: 180_000,
+    });
+    await expect(page.getByText(/Revenue/i).first()).toBeVisible();
   });
 
   test("makes no unverified compliance claims", async ({ page }) => {
@@ -180,7 +211,16 @@ test.describe("error and empty states", () => {
     await signUp(page);
     await page.goto("/datasets/new");
 
-    await page.setInputFiles('input[type="file"]', {
+    // Through the real affordance rather than by writing to the hidden input.
+    // `setInputFiles` does not wait for anything, so on a page React has not
+    // finished hydrating it sets the file before the change handler exists and
+    // the test fails with no error shown and no explanation. Clicking "browse"
+    // waits for the handler, because without one no file chooser ever opens.
+    const [chooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      page.getByRole("button", { name: "browse" }).click(),
+    ]);
+    await chooser.setFiles({
       name: "notes.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("this is not a spreadsheet"),
