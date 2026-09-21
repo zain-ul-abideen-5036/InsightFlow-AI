@@ -3,120 +3,203 @@
 @tailwind utilities;
 
 /**
- * Design tokens.
+ * InsightFlow design tokens.
  *
- * Light is the primary theme: business analytics is read in offices, in
- * daylight, and printed. Dark is a first-class alternative, not an afterthought.
+ * Three ideas hold this together.
  *
- * The accent is a single restrained blue. Success / warning / danger exist to
- * carry meaning only, and every use is paired with an icon or a word so colour
- * is never the sole signal (WCAG 1.4.1).
+ * 1. **Depth carries hierarchy.** The application canvas is a visibly tinted
+ *    grey, cards are white, and the chrome is its own surface. Previously every
+ *    one of those was within 1% lightness of the others, so nothing advanced
+ *    and nothing receded. Elevation is now a real ladder — canvas, chrome,
+ *    card, raised, overlay — and each step is perceptible.
+ *
+ * 2. **Colour means something or it is absent.** One blue accent, and semantic
+ *    success / warning / danger. Nothing is coloured to be decorative. Every
+ *    semantic use is paired with an icon or a word so colour is never the sole
+ *    signal (WCAG 1.4.1).
+ *
+ * 3. **Light is the primary theme.** Business analytics is read in offices, in
+ *    daylight, and printed. Dark is a first-class alternative, tuned
+ *    separately rather than inverted.
  */
 
 @layer base {
   :root {
-    /* Surfaces */
-    --background: 0 0% 100%;
-    --surface: 220 20% 99%;
+    /* ---------------------------------------------------------- Surfaces */
+    /* The canvas the application sits on. Deliberately grey enough that a
+       white card reads as a card without needing a heavy shadow. */
+    --background: 220 24% 97%;
+    --surface: 0 0% 100%;
     --surface-raised: 0 0% 100%;
-    --surface-sunken: 220 20% 97%;
+    --surface-sunken: 220 24% 95.5%;
+    /* Sidebar and top bar: their own surface, so the shell reads as a shell. */
+    --chrome: 220 28% 98.5%;
+    --chrome-foreground: 222 28% 16%;
     --card: 0 0% 100%;
     --card-foreground: 222 30% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 30% 11%;
+    /* An inverted surface for sections that need to carry weight. */
+    --inverse: 222 42% 10%;
+    --inverse-foreground: 220 22% 94%;
+    --inverse-muted: 220 14% 66%;
+    --inverse-border: 220 20% 22%;
 
-    /* Text */
-    --foreground: 222 30% 11%; /* #111827-ish near-black */
-    --muted: 220 20% 96%;
-    --muted-foreground: 220 9% 44%; /* #6B7280 */
+    /* -------------------------------------------------------------- Text */
+    --foreground: 222 32% 10%;
+    --muted: 220 20% 95%;
+    /* Raised from 44% to 38% lightness: at 11–13px, which is most of its
+       usage, the old value sat under 4.5:1 against a tinted canvas. */
+    --muted-foreground: 220 11% 38%;
+    /* For metadata that must stay quiet but still legible. */
+    --subtle-foreground: 220 10% 47%;
 
-    /* Lines and focus */
-    --border: 220 16% 90%; /* #E5E7EB */
-    --input: 220 16% 88%;
+    /* --------------------------------------------------- Lines and focus */
+    --border: 220 18% 89%;
+    --border-strong: 220 16% 82%;
+    --input: 220 16% 86%;
     --ring: 221 83% 53%;
 
-    /* Accent */
-    --primary: 221 83% 53%; /* #2563EB */
-    --primary-hover: 221 83% 46%;
+    /* ------------------------------------------------------------ Accent */
+    --primary: 221 83% 50%;
+    --primary-hover: 221 83% 44%;
+    --primary-active: 221 83% 39%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 96%;
+    --primary-subtle: 218 100% 96.5%;
+    --secondary: 220 20% 95%;
     --secondary-foreground: 222 30% 16%;
-    --accent: 220 20% 95%;
+    --accent: 220 22% 94%;
     --accent-foreground: 222 30% 14%;
 
-    /* Semantic */
-    --success: 142 71% 34%; /* #16A34A */
+    /* ---------------------------------------------------------- Semantic */
+    --success: 152 62% 30%;
     --success-foreground: 0 0% 100%;
-    --success-subtle: 142 65% 96%;
-    --warning: 32 95% 37%; /* #D97706 */
+    --success-subtle: 150 55% 95.5%;
+    --success-border: 150 40% 82%;
+    --warning: 28 88% 36%;
     --warning-foreground: 0 0% 100%;
-    --warning-subtle: 38 92% 96%;
-    --danger: 0 72% 46%; /* #DC2626 */
+    --warning-subtle: 38 92% 95.5%;
+    --warning-border: 38 70% 80%;
+    --danger: 0 70% 44%;
     --danger-foreground: 0 0% 100%;
-    --danger-subtle: 0 86% 97%;
-    --info: 221 83% 53%;
+    --danger-subtle: 0 85% 96.5%;
+    --danger-border: 0 60% 86%;
+    --info: 221 83% 50%;
     --info-foreground: 0 0% 100%;
-    --info-subtle: 214 100% 97%;
+    --info-subtle: 218 100% 96.5%;
+    --info-border: 218 70% 85%;
 
-    /* Charts — distinguishable in sequence and in greyscale */
+    /* ------------------------------------------------------------ Charts */
+    /* Ordered for maximum adjacent contrast, and distinguishable in
+       greyscale as well as in the three common colour-vision deficiencies. */
     --chart-1: 221 83% 53%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 262 60% 55%;
-    --chart-4: 32 88% 48%;
-    --chart-5: 340 65% 52%;
-    --chart-6: 199 84% 42%;
+    --chart-2: 173 58% 36%;
+    --chart-3: 262 58% 58%;
+    --chart-4: 32 88% 45%;
+    --chart-5: 330 62% 50%;
+    --chart-6: 199 84% 38%;
+    --chart-grid: 220 18% 91%;
+    --chart-axis: 220 10% 52%;
 
-    --shadow-color: 222 40% 20%;
+    /* --------------------------------------------------------- Elevation */
+    --shadow-color: 222 44% 18%;
+
+    /* ------------------------------------------------------------ Radius */
     --radius: 0.625rem;
+    --radius-lg: 0.875rem;
+    --radius-xl: 1.125rem;
+
+    /* ------------------------------------------------------------ Motion */
+    /* One set of durations and curves, so nothing in the product moves at a
+       speed nothing else moves at. */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+    --duration-fast: 120ms;
+    --duration-base: 180ms;
+    --duration-slow: 280ms;
+
+    /* ------------------------------------------------------------- Brand */
+    /* The mark is two-tone, so it cannot be driven by `currentColor`. These
+       give it a container and a glyph that flip with the theme instead. */
+    --logo-box: 222 45% 9%;
+    --logo-line: 0 0% 100%;
+    --logo-datum: 217 91% 60%;
+
+    /* --------------------------------------------------------- Shell size */
+    --sidebar-width: 15.5rem;
+    --topbar-height: 3.5rem;
   }
 
   .dark {
-    --background: 222 32% 7%; /* #0B0F19 */
-    --surface: 222 28% 9%;
-    --surface-raised: 222 26% 12%;
-    --surface-sunken: 222 34% 6%;
-    --card: 222 26% 11%;
+    --background: 224 36% 6%;
+    --surface: 223 30% 9%;
+    --surface-raised: 223 26% 12.5%;
+    --surface-sunken: 224 38% 4.5%;
+    --chrome: 224 32% 7.5%;
+    --chrome-foreground: 220 18% 92%;
+    --card: 223 28% 10%;
     --card-foreground: 220 18% 94%;
-    --popover: 222 26% 12%;
+    --popover: 223 26% 13%;
     --popover-foreground: 220 18% 94%;
+    --inverse: 220 20% 95%;
+    --inverse-foreground: 222 35% 11%;
+    --inverse-muted: 220 12% 38%;
+    --inverse-border: 220 16% 82%;
 
-    --foreground: 220 18% 94%;
-    --muted: 222 20% 16%;
-    --muted-foreground: 220 12% 66%;
+    --foreground: 220 20% 95%;
+    --muted: 223 22% 16%;
+    --muted-foreground: 220 13% 68%;
+    --subtle-foreground: 220 12% 60%;
 
-    --border: 222 18% 19%;
+    --border: 222 20% 18%;
+    --border-strong: 222 18% 26%;
     --input: 222 18% 22%;
-    --ring: 217 91% 62%;
+    --ring: 217 91% 64%;
 
     --primary: 217 91% 62%;
-    --primary-hover: 217 91% 68%;
-    --primary-foreground: 222 40% 8%;
-    --secondary: 222 20% 16%;
+    --primary-hover: 217 91% 70%;
+    --primary-active: 217 91% 76%;
+    --primary-foreground: 222 45% 8%;
+    --primary-subtle: 217 60% 16%;
+    --secondary: 223 22% 17%;
     --secondary-foreground: 220 18% 92%;
-    --accent: 222 20% 18%;
+    --accent: 223 22% 19%;
     --accent-foreground: 220 18% 94%;
 
-    --success: 142 62% 45%;
-    --success-foreground: 222 40% 8%;
-    --success-subtle: 142 40% 14%;
-    --warning: 38 92% 55%;
-    --warning-foreground: 222 40% 8%;
-    --warning-subtle: 38 50% 15%;
-    --danger: 0 79% 63%;
-    --danger-foreground: 222 40% 8%;
-    --danger-subtle: 0 50% 16%;
+    --success: 150 60% 52%;
+    --success-foreground: 222 45% 8%;
+    --success-subtle: 152 40% 14%;
+    --success-border: 152 30% 26%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 222 45% 8%;
+    --warning-subtle: 36 45% 15%;
+    --warning-border: 36 35% 28%;
+    --danger: 0 80% 66%;
+    --danger-foreground: 222 45% 8%;
+    --danger-subtle: 0 45% 16%;
+    --danger-border: 0 35% 30%;
     --info: 217 91% 62%;
-    --info-foreground: 222 40% 8%;
+    --info-foreground: 222 45% 8%;
     --info-subtle: 217 50% 16%;
+    --info-border: 217 40% 30%;
 
-    --chart-1: 217 91% 62%;
-    --chart-2: 173 58% 52%;
-    --chart-3: 262 72% 70%;
-    --chart-4: 38 92% 58%;
-    --chart-5: 340 75% 66%;
+    --chart-1: 217 91% 64%;
+    --chart-2: 173 60% 50%;
+    --chart-3: 262 72% 72%;
+    --chart-4: 38 92% 60%;
+    --chart-5: 336 74% 68%;
     --chart-6: 199 84% 58%;
+    --chart-grid: 222 18% 18%;
+    --chart-axis: 220 12% 58%;
 
-    --shadow-color: 222 60% 2%;
+    --shadow-color: 224 70% 2%;
+
+    /* On a dark canvas the mark inverts to a paper container, which keeps the
+       glyph legible and stops the badge disappearing into the sidebar. */
+    --logo-box: 220 20% 95%;
+    --logo-line: 222 45% 9%;
+    --logo-datum: 221 83% 50%;
   }
 
   * {
@@ -126,6 +209,8 @@
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    /* Sticky headers must not cover the target of an in-page link. */
+    scroll-padding-top: 5rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -143,7 +228,7 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-[0.9375rem] leading-normal text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     text-rendering: optimizeLegibility;
   }
@@ -151,10 +236,13 @@
   /* Figures must align vertically in tables and KPI rows. */
   .tabular {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
+    font-feature-settings: "tnum", "cv02", "cv03", "cv04";
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     @apply font-semibold tracking-tight text-foreground;
     text-wrap: balance;
   }
@@ -169,13 +257,13 @@
   }
 
   ::selection {
-    @apply bg-primary/15 text-foreground;
+    @apply bg-primary/20 text-foreground;
   }
 
   /* Scrollbars that read as part of the product, not the OS. */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 11px;
+    height: 11px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -192,34 +280,97 @@
   /** Skip link: first tab stop, visible only when focused. */
   .skip-link {
     @apply absolute left-4 top-4 z-[100] -translate-y-20 rounded-md bg-primary px-4 py-2
-           text-sm font-medium text-primary-foreground transition-transform
+           text-sm font-medium text-primary-foreground shadow-lg transition-transform
            focus-visible:translate-y-0;
   }
 
-  /** Subtle grid used behind the marketing hero. */
-  .grid-backdrop {
+  /**
+   * Panel — the one card treatment, in three weights.
+   *
+   * Previously every container in the product was the same white rectangle
+   * with the same border and the same invisible shadow. These three exist so a
+   * component can say how much it wants to advance, and so that choice is made
+   * once rather than re-improvised with utility classes on every instance.
+   */
+  .panel {
+    @apply rounded-xl border border-border bg-card text-card-foreground shadow-e1;
+  }
+  .panel-flat {
+    @apply rounded-xl border border-border bg-card text-card-foreground;
+  }
+  .panel-sunken {
+    @apply rounded-xl border border-border/70 bg-surface-sunken;
+  }
+
+  /** A quiet label above a group of related controls or figures. */
+  .eyebrow {
+    @apply text-2xs font-semibold uppercase tracking-[0.09em] text-subtle-foreground;
+  }
+
+  /**
+   * The hero surface behind the marketing masthead and the auth side panel.
+   *
+   * A single soft accent bloom over the canvas — not a gradient wash. The
+   * point is to give the hero an edge and a centre of gravity, not to
+   * decorate it.
+   */
+  .hero-surface {
     background-image:
-      linear-gradient(to right, hsl(var(--border) / 0.55) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(var(--border) / 0.55) 1px, transparent 1px);
-    background-size: 56px 56px;
-    mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 45%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 45%, transparent 100%);
+      radial-gradient(
+        ellipse 70% 52% at 50% -8%,
+        hsl(var(--primary) / 0.1),
+        transparent 62%
+      ),
+      radial-gradient(
+        ellipse 46% 40% at 88% 6%,
+        hsl(var(--chart-2) / 0.07),
+        transparent 70%
+      );
+  }
+
+  /** A faint measured grid, for use only over `.hero-surface`. */
+  .hero-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--foreground) / 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 72% 58% at 50% 0%, #000 30%, transparent 78%);
+    -webkit-mask-image: radial-gradient(
+      ellipse 72% 58% at 50% 0%,
+      #000 30%,
+      transparent 78%
+    );
   }
 
   /** Loading placeholder with a single travelling highlight. */
   .shimmer {
-    @apply relative overflow-hidden bg-muted;
+    @apply relative overflow-hidden rounded-md bg-muted;
   }
   .shimmer::after {
     @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r
-           from-transparent via-background/60 to-transparent;
+           from-transparent via-background/70 to-transparent;
     content: "";
+  }
+
+  /**
+   * Entry motion.
+   *
+   * Applied to a small number of top-level regions, staggered by index, so a
+   * screen assembles rather than appearing all at once. Deliberately subtle:
+   * 8px and 260ms. Anything more reads as a website, not an instrument.
+   */
+  .enter {
+    animation: enter var(--duration-slow) var(--ease-out) both;
+    animation-delay: calc(var(--enter-index, 0) * 50ms);
   }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
   }
 
   /* Visually hidden but available to screen readers. */
@@ -233,6 +384,24 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border-width: 0;
+  }
+
+  /* Fades the bottom edge of a scrollable region so cut-off content reads as
+     scrollable rather than as truncated. */
+  .fade-bottom {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent 100%);
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -248,6 +417,11 @@
   }
   body {
     background: #fff;
+  }
+  .panel,
+  .panel-flat {
+    box-shadow: none;
+    border-color: #d4d4d8;
   }
   .print-break-inside-avoid {
     break-inside: avoid;

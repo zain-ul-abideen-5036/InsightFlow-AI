@@ -20,61 +20,115 @@ import { chromium } from "@playwright/test";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const MARK = `
+/**
+ * The mark's geometry.
+ *
+ * Kept identical to `MARK_GEOMETRY` in `components/logo.tsx`. These are the
+ * only two places the path exists, and both are checked by
+ * `tests/brand.test.tsx`, which fails if they drift apart.
+ */
+const GEOMETRY = {
+  corner: 8.6,
+  line: "M6.8 21.9 L12.5 16.2 L16.3 20 L20.9 13",
+  lineWidth: 2.7,
+  datum: { cx: 23, cy: 10, r: 3.1, knockout: 5.5 },
+};
+
+/** The mark, as standalone SVG, in a chosen pair of tones. */
+function mark({ box, line, datum, withBox = true }) {
+  const d = GEOMETRY.datum;
+  return `
 <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="7" y="18" width="3.5" height="7" rx="1.25" fill="white" fill-opacity="0.55"/>
-  <rect x="14.25" y="13" width="3.5" height="12" rx="1.25" fill="white" fill-opacity="0.78"/>
-  <rect x="21.5" y="8" width="3.5" height="17" rx="1.25" fill="white"/>
-  <path d="M6 14.5C9.5 14.5 10.5 9 15 9C19.5 9 20 5.5 26 5.5" stroke="white"
-        stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+  ${withBox ? `<rect width="32" height="32" rx="${GEOMETRY.corner}" fill="${box}"/>` : ""}
+  <path d="${GEOMETRY.line}" stroke="${line}" stroke-opacity="0.5"
+        stroke-width="${GEOMETRY.lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="${d.cx}" cy="${d.cy}" r="${d.knockout}" fill="${box}"/>
+  <circle cx="${d.cx}" cy="${d.cy}" r="${d.r}" fill="${datum}"/>
 </svg>`;
+}
 
-const FONT_STACK =
-  `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+const INK = { box: "#0B1220", line: "#FFFFFF", datum: "#3B82F6" };
 
+const FONT_STACK = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+
+/**
+ * The social card.
+ *
+ * Built from the same parts as the redesigned hero: the inverted brand
+ * surface, the tagline as the display statement, and one real figure from the
+ * sample analysis so the card carries a fact rather than an adjective.
+ */
 const ogCard = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    width: 1200px; height: 630px; background: #0B0F19; color: #fff;
-    font-family: ${FONT_STACK}; padding: 72px;
+    width: 1200px; height: 630px; color: #fff; font-family: ${FONT_STACK};
+    padding: 76px 80px; position: relative; overflow: hidden;
+    background:
+      radial-gradient(ellipse 60% 55% at 78% 8%, rgba(37,99,235,0.28), transparent 62%),
+      radial-gradient(ellipse 50% 45% at 8% 96%, rgba(13,148,136,0.16), transparent 66%),
+      #080C15;
     display: flex; flex-direction: column; justify-content: space-between;
   }
-  .brand { display: flex; align-items: center; gap: 18px; }
-  .brand svg { width: 60px; height: 60px; background: #2563EB; border-radius: 15px; }
-  .wordmark { font-size: 36px; font-weight: 600; letter-spacing: -0.02em; }
-  .wordmark span { font-weight: 400; color: #9CA3AF; margin-left: 8px; }
-  h1 { font-size: 68px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.08; }
-  h1 .muted { color: #9CA3AF; }
-  p { margin-top: 26px; font-size: 27px; line-height: 1.45; color: #9CA3AF; max-width: 940px; }
-  .pill {
-    align-self: flex-start; font-size: 21px; padding: 10px 22px; border-radius: 999px;
-    background: rgba(37, 99, 235, 0.18); color: #93B4FD;
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.045) 1px, transparent 1px);
+    background-size: 72px 72px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, #000 20%, transparent 75%);
   }
+  .inner { position: relative; display: flex; flex-direction: column;
+           justify-content: space-between; height: 100%; }
+  .brand { display: flex; align-items: center; gap: 17px; }
+  .brand svg { width: 56px; height: 56px; }
+  .wordmark { font-size: 34px; font-weight: 640; letter-spacing: -0.025em; }
+  .wordmark span { font-weight: 500; color: rgba(255,255,255,0.45); margin-left: 10px; }
+  h1 { font-size: 72px; font-weight: 640; letter-spacing: -0.038em; line-height: 1.05; }
+  h1 .muted { color: rgba(255,255,255,0.46); }
+  p { margin-top: 28px; font-size: 26px; line-height: 1.5;
+      color: rgba(255,255,255,0.62); max-width: 880px; }
+  .foot { display: flex; align-items: center; gap: 14px; }
+  .pill {
+    font-size: 20px; padding: 11px 22px; border-radius: 999px; font-weight: 500;
+    background: rgba(37,99,235,0.16); color: #9CC0FF;
+    border: 1px solid rgba(147,180,253,0.22);
+  }
+  .fact { font-size: 20px; color: rgba(255,255,255,0.42); }
+  .fact b { color: rgba(255,255,255,0.78); font-weight: 600; }
 </style></head><body>
-  <div class="brand">${MARK}<div class="wordmark">InsightFlow<span>AI</span></div></div>
-  <div>
-    <h1>Understand your business.<br><span class="muted">Act on the data.</span></h1>
-    <p>An AI business operations analyst. Every figure computed, every claim traceable.</p>
+  <div class="grid"></div>
+  <div class="inner">
+    <div class="brand">${mark(INK)}<div class="wordmark">InsightFlow<span>AI</span></div></div>
+    <div>
+      <h1>Understand your business.<br><span class="muted">Act on the data.</span></h1>
+      <p>Upload your business data, see what changed, investigate why, and ask
+         questions answered from your own figures.</p>
+    </div>
+    <div class="foot">
+      <div class="pill">Evidence before explanation</div>
+      <div class="fact">Every number computed, never generated &middot; <b>the AI explains, it does not calculate</b></div>
+    </div>
   </div>
-  <div class="pill">Evidence before explanation</div>
 </body></html>`;
 
+/**
+ * The iOS home-screen icon.
+ *
+ * Bled to the edges rather than centred inside a coloured plate: iOS applies
+ * its own mask, and an inset mark inside that mask reads as a sticker.
+ */
 const appleIcon = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; }
-  body {
-    width: 180px; height: 180px; background: #111827;
-    display: flex; align-items: center; justify-content: center;
-  }
-  svg { width: 128px; height: 128px; }
-</style></head><body>${MARK}</body></html>`;
+  body { width: 180px; height: 180px; background: #0B1220; }
+  svg { width: 180px; height: 180px; display: block; }
+</style></head><body>${mark({ ...INK, withBox: false })
+  .replace('viewBox="0 0 32 32"', 'viewBox="0 0 32 32"')
+  .replace("<svg ", '<svg style="background:#0B1220" ')}</body></html>`;
 
 async function render(browser, html, { width, height, path }) {
-  const page = await browser.newPage({
-    viewport: { width, height },
-    deviceScaleFactor: 1,
-  });
+  const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
   await page.setContent(html, { waitUntil: "load" });
   const buffer = await page.screenshot({ type: "png" });
   await mkdir(dirname(path), { recursive: true });
