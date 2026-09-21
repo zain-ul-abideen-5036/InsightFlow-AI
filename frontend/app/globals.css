@@ -51,8 +51,10 @@
     /* Raised from 44% to 38% lightness: at 11–13px, which is most of its
        usage, the old value sat under 4.5:1 against a tinted canvas. */
     --muted-foreground: 220 11% 38%;
-    /* For metadata that must stay quiet but still legible. */
-    --subtle-foreground: 220 10% 47%;
+    /* For metadata that must stay quiet but still legible. At 47% it read
+       4.38:1 against the tinted canvas — under AA, and this token carries
+       timestamps, row counts and period labels at 12px. 43% clears it. */
+    --subtle-foreground: 220 10% 43%;
 
     /* --------------------------------------------------- Lines and focus */
     --border: 220 18% 89%;

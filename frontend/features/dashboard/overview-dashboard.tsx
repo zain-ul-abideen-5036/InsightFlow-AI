@@ -246,7 +246,7 @@ export function OverviewDashboard({
       />
 
       {/* ------------------------------------------------------------- KPIs */}
-      <section aria-labelledby="kpi-heading" className="space-y-3">
+      <section aria-labelledby="kpi-heading" className="enter space-y-3" style={{ "--enter-index": 1 } as React.CSSProperties}>
         <h2 id="kpi-heading" className="sr-only">
           Key figures
         </h2>
@@ -309,7 +309,7 @@ export function OverviewDashboard({
         screen. Nothing was wrong with the chart; the layout was asking it to
         be as tall as a list it had nothing to do with.
       */}
-      <section aria-labelledby="trend-heading">
+      <section aria-labelledby="trend-heading" className="enter" style={{ "--enter-index": 2 } as React.CSSProperties}>
         <h2 id="trend-heading" className="sr-only">
           Trend over time
         </h2>
@@ -356,7 +356,7 @@ export function OverviewDashboard({
       </section>
 
       {/* ----------------------------------------------------- What changed */}
-      <section aria-labelledby="changes-heading" className="space-y-4">
+      <section aria-labelledby="changes-heading" className="enter space-y-4" style={{ "--enter-index": 3 } as React.CSSProperties}>
         <SectionHeading
           id="changes-heading"
           title="What changed"
@@ -399,7 +399,7 @@ export function OverviewDashboard({
       </section>
 
       {/* -------------------------------------------------- Needs attention */}
-      <section aria-labelledby="attention-heading" className="space-y-4">
+      <section aria-labelledby="attention-heading" className="enter space-y-4" style={{ "--enter-index": 4 } as React.CSSProperties}>
         <SectionHeading
           id="attention-heading"
           title="Needs attention"
