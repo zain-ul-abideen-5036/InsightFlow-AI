@@ -3,7 +3,7 @@
 ## Running everything
 
 ```bash
-# Backend — 266 tests, ~3 minutes
+# Backend — 266 tests, ~9 minutes
 cd backend && pytest
 
 # Frontend — 59 tests, typecheck, lint
@@ -161,6 +161,11 @@ negative rendered as a positive, a currency shown without its code.
 # With both servers running
 cd backend && python scripts/acceptance_check.py
 python scripts/acceptance_check.py --frontend https://your-app.vercel.app
+
+# The client budget defaults to 600s because answering a question is two
+# model calls and local CPU inference is slow. Raise it further rather than
+# reading a read timeout as a product failure.
+python scripts/acceptance_check.py --timeout 900
 ```
 
 75 checks driving the complete journey **through the Next.js layer with a real

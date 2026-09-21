@@ -327,10 +327,18 @@ Confirm the backend can see it: Settings → AI & data should show
 | `mistral` | 4.4 GB | Better prose, noticeably slower on CPU |
 | `llama3.2:1b` | 1.3 GB | Fastest, weakest at following the JSON schema |
 
-**On CPU, expect 60–120 seconds for a written answer.** The backend warms the
-model at start-up so the first question does not also pay the load cost, and
-`AI_TIMEOUT_SECONDS` defaults to 180 to allow for it. For fast responses, use a
-GPU or point `AI_PROVIDER=openai` at a hosted endpoint.
+**On CPU, expect 60–120 seconds for a written answer**, and occasionally two to
+three minutes on a loaded machine. The backend warms the model at start-up so
+the first question does not also pay the load cost.
+
+`AI_TIMEOUT_SECONDS` defaults to 120, and with `AI_MAX_RETRIES=1` that caps a
+call at 240 seconds. The cap matters: the whole request has to return within
+300 seconds or Node gives up waiting for headers and the user is told the
+service is unreachable when it is not. Read the ceiling note in
+[ENVIRONMENT.md](ENVIRONMENT.md) before changing either value.
+
+For fast responses, use a GPU or point `AI_PROVIDER=openai` at a hosted
+endpoint — answers then come back in seconds and none of this applies.
 
 ---
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { API_PREFIX, BACKEND_URL } from "@/lib/backend";
 import { applyClientIdentity } from "@/lib/client-ip";
+import { isTimeoutError } from "@/lib/fetch-errors";
 import { getAccessToken, getRefreshToken, updateAccessToken } from "@/lib/session";
 import type { TokenBundle } from "@/lib/session";
 
@@ -30,6 +31,7 @@ const HOP_BY_HOP = new Set([
 ]);
 
 type RouteContext = { params: Promise<{ path: string[] }> };
+
 
 async function proxy(
   request: Request,
@@ -82,6 +84,27 @@ async function proxy(
       `[proxy] ${request.method} ${target} failed:`,
       error instanceof Error ? `${error.message}${error.cause ? ` (cause: ${String(error.cause)})` : ""}` : error,
     );
+
+    // A backend that answered too slowly is not a backend that is down, and
+    // saying so sends the reader to check a service that is running fine.
+    // Node stops waiting for response headers after 300s and that ceiling is
+    // not reachable from a route handler, so the honest thing is to name what
+    // actually happened. The backend's own AI budget is set below this so it
+    // times out first and returns its deterministic answer; this branch is
+    // the backstop for when something still runs longer.
+    if (isTimeoutError(error)) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "backend_timeout",
+            message: "The analysis service took too long to answer.",
+            hint: "It is still running. A slow local AI model is the usual cause — try a shorter question, or point AI_PROVIDER at a hosted model.",
+          },
+        },
+        { status: 504 },
+      );
+    }
+
     return NextResponse.json(
       {
         error: {

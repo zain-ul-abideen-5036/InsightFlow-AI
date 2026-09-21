@@ -92,12 +92,27 @@ both halves. See [SECURITY.md §4](SECURITY.md#4-identifying-the-caller).
 | --- | --- | --- |
 | `AI_PROVIDER` | `ollama` | `ollama`, `openai`, or `none` |
 | `AI_ENABLED` | `true` | `false` disables written explanations entirely. The product remains fully functional |
-| `AI_TIMEOUT_SECONDS` | `180` | Per-request ceiling. Generous because local CPU inference is slow |
+| `AI_TIMEOUT_SECONDS` | `120` | Per-call ceiling. See the note below before raising it |
 | `AI_MAX_RETRIES` | `1` | Retries on a transport failure |
 | `AI_MAX_SAMPLE_ROWS` | `25` | Hard ceiling on raw rows that may ever be sent. Nothing currently sends any |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Local Ollama endpoint |
 | `OLLAMA_MODEL` | `qwen2.5:3b-instruct` | Model name |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint |
+
+> **The AI budget has a hard ceiling of 300 seconds.**
+>
+> One call costs at most `(AI_MAX_RETRIES + 1) * AI_TIMEOUT_SECONDS`. The whole
+> request has to finish inside 300 seconds, because that is when Node stops
+> waiting for response headers, and a Next.js route handler cannot raise it.
+>
+> Go over it and the browser is told *"we could not reach the analysis
+> service"* for a backend that is working perfectly — and the answer it was
+> about to return is thrown away. The defaults give `2 * 120 = 240s`, leaving
+> headroom. Raise `AI_TIMEOUT_SECONDS` and lower `AI_MAX_RETRIES` together, or
+> the product will start misreporting slow answers as outages.
+>
+> Under the ceiling, a slow model is handled properly: the backend times out
+> first and returns its deterministic answer, marked as a fallback.
 | `OPENAI_API_KEY` | *(empty)* | **Required when `AI_PROVIDER=openai`** |
 | `OPENAI_MODEL` | `gpt-4o-mini` | Model name |
 

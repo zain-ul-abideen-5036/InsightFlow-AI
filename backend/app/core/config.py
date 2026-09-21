@@ -93,7 +93,19 @@ class Settings(BaseSettings):
     # -- AI ------------------------------------------------------------------
     ai_provider: Literal["ollama", "openai", "none"] = "ollama"
     ai_enabled: bool = True
-    ai_timeout_seconds: int = 180
+    # A whole request must finish inside the ceiling the Node proxy allows.
+    # Node's HTTP client gives up waiting for response headers after 300s and
+    # it is not configurable from a Next.js route handler, so anything slower
+    # is reported to the user as "we could not reach the analysis service" —
+    # a wrong diagnosis for a backend that is working, and it throws away the
+    # result that was about to arrive.
+    #
+    # One call costs at most (ai_max_retries + 1) * ai_timeout_seconds, so
+    # these two together are the budget: 2 * 120 = 240s, leaving headroom.
+    # Past that the AI layer times out on its own and `_run` falls back to the
+    # deterministic answer, which is a designed and tested path that tells the
+    # truth. That is strictly better than the proxy failing first.
+    ai_timeout_seconds: int = 120
     ai_max_retries: int = 1
     ai_max_sample_rows: int = 25
 
