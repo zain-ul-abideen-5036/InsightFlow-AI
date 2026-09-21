@@ -252,10 +252,10 @@ The ones you are most likely to change:
 ## Testing
 
 ```bash
-# Backend — 266 tests
+# Backend — 277 tests
 cd backend && pytest
 
-# Frontend — 59 tests
+# Frontend — 74 tests
 cd frontend && npm run check      # typecheck + lint + tests
 
 # Full-stack acceptance — 75 checks, with both servers running
@@ -331,7 +331,7 @@ backend/
     db/          SQLAlchemy models and session management
     jobs/        async analysis runner
     seed/        the NovaMart generator
-  tests/         266 tests
+  tests/         277 tests
   scripts/       acceptance_check.py
 
 frontend/
@@ -340,7 +340,7 @@ frontend/
   features/      domain modules — datasets, analysis, insights, anomalies,
                  chat, reports, settings, onboarding
   lib/           API client, session handling, formatting
-  tests/         59 tests
+  tests/         74 tests
 
 docs/            ARCHITECTURE.md · DEPLOYMENT.md · SECURITY.md
                  AI_GUARDRAILS.md · TESTING.md · DEVELOPMENT.md

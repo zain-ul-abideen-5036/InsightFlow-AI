@@ -114,17 +114,17 @@ All run on the final code.
 
 | Suite | Result |
 | --- | --- |
-| **Backend** | **266 passed**, 0 failed |
-| **Frontend unit** | **59 passed**, 0 failed |
+| **Backend** | **277 passed**, 0 failed |
+| **Frontend unit** | **74 passed**, 0 failed |
 | **Type check** | clean |
 | **Lint** | clean, `--max-warnings=0` |
-| **Production build** | clean, 21 routes |
+| **Production build** | clean, no warnings, 31 routes |
 | **Full-stack acceptance** | **75 / 75 passed** |
 | **Browser end-to-end** | **11 passed**, 0 failed |
 | **Migrations** | `upgrade head` then `downgrade base` on an empty database |
 | **Model/migration drift** | autogenerate produces an empty migration |
 
-Backend was 180 tests at the start of this pass, now 266. Frontend was 46, now 59.
+Backend was 180 tests at the start of this pass, now 277. Frontend was 46, now 74.
 
 | File | Tests |
 | --- | --- |
@@ -137,6 +137,7 @@ Backend was 180 tests at the start of this pass, now 266. Frontend was 46, now 5
 | `test_authorization.py` | 17 |
 | `test_demo.py` | 12 |
 | `test_client_identity.py` | 12 |
+| `test_ai_budget.py` | 11 |
 
 The most valuable addition is an invariant rather than a case: **every figure
 the engine writes must be a figure the engine recorded**, swept over 27
@@ -306,8 +307,8 @@ segment name would not be caught by them.
 | Item | Status |
 | --- | --- |
 | Application builds | **PASS** |
-| Backend tests pass | **PASS** — 266 |
-| Frontend tests pass | **PASS** — 59 |
+| Backend tests pass | **PASS** — 277 |
+| Frontend tests pass | **PASS** — 74 |
 | Type check passes | **PASS** |
 | Lint passes | **PASS** — zero warnings |
 | Browser end-to-end passes | **PASS** — 11 |
@@ -319,15 +320,15 @@ segment name would not be caught by them.
 | Screenshots are real | **PASS** — 8, captured from the running app |
 | Documentation complete | **PASS** — 10 documents |
 | README complete | **PASS** |
-| Repository clean | **PASS** — 224 files, no artifacts |
+| Repository clean | **PASS** — 229 files, no artifacts |
 | No secrets tracked | **PASS** — scanned, 0 findings |
 | Frontend is Vercel-ready | **PASS** — production build verified |
 | Backend deployment documented and tested | **PASS** — Dockerfile, exact commands |
 | Production variables documented | **PASS** |
-| Git history meaningful | **PASS** — 27 commits by concern |
+| Git history meaningful | **PASS** — 34 commits by concern |
 | Pushed to GitHub | **PASS** — verified against the remote |
 | Working tree clean | **PASS** |
-| Clean-room setup verified | **PASS** — fresh clone, fresh venv, 266 tests, build |
+| Clean-room setup verified | **PASS** — fresh clone, fresh venv, full suite, build |
 | **Production smoke test against a live URL** | **BLOCKED** — no deployment has been created. Requires Vercel, a host, and a database, each needing account access. [DEPLOYMENT.md](DEPLOYMENT.md) has the exact steps and the verification commands. |
 
 One item is blocked, and it is blocked on credentials rather than on code.
@@ -342,11 +343,11 @@ directory.
 ```
 git clone https://github.com/zain-ul-abideen-5036/InsightFlow-AI.git
 cd backend && python -m venv .venv && pip install -r requirements.txt
-cp .env.example .env && pytest            → 266 passed
+cp .env.example .env && pytest            → 277 passed
 cd ../frontend && npm ci && cp .env.example .env.local
 npx tsc --noEmit                          → clean
 npx eslint . --max-warnings=0             → clean
-npx vitest run                            → 59 passed
+npx vitest run                            → 74 passed
 npx next build                            → clean
 ```
 

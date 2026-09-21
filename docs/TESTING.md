@@ -3,10 +3,10 @@
 ## Running everything
 
 ```bash
-# Backend — 266 tests, ~9 minutes
+# Backend — 277 tests, ~5-9 minutes
 cd backend && pytest
 
-# Frontend — 59 tests, typecheck, lint
+# Frontend — 74 tests, typecheck, lint
 cd frontend && npm run check
 
 # Full-stack acceptance — 75 checks, needs both servers running
@@ -52,7 +52,8 @@ So the suite spends most of its effort on four things:
 | `test_authorization.py` | 17 | Multi-tenancy |
 | `test_demo.py` | 12 | Demo isolation, expiry, file clean-up |
 | `test_client_identity.py` | 12 | The rate-limit trust boundary |
-| **Total** | **266** | |
+| `test_ai_budget.py` | 11 | The bound on model time per request |
+| **Total** | **277** | |
 
 **The whole suite runs with `AI_ENABLED=false`**, which means it also proves
 continuously that the product is fully functional without a model.
@@ -148,6 +149,7 @@ Every rejection is asserted to carry a message the uploader can act on.
 | --- | --- | --- |
 | `tests/format.test.ts` | 45 | Currency, percentage, compact-number, date, duration, and relative-time formatting |
 | `tests/components.test.tsx` | 14 | KPI cards, evidence panels, empty and error states, accessibility attributes |
+| `tests/fetch-errors.test.ts` | 15 | Telling a slow backend apart from an absent one |
 
 Formatting gets disproportionate attention because it is where a correct
 calculation becomes a wrong statement: a percentage rounded the wrong way, a
@@ -276,7 +278,7 @@ the test is loosened.
 
 | Suite | Count |
 | --- | --- |
-| Backend | 266 passed |
-| Frontend | 59 passed |
+| Backend | 277 passed |
+| Frontend | 74 passed |
 | Playwright | 11 passed |
 | Acceptance | 75/75 |
