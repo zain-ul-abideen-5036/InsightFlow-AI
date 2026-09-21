@@ -59,7 +59,12 @@ export function Segmented<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-surface-sunken p-0.5",
+        "inline-flex max-w-full items-center gap-0.5 rounded-lg border border-border",
+        "bg-surface-sunken p-0.5",
+        // Five metric names do not fit across a phone. Scrolling the group is
+        // the honest answer: wrapping made "Average order value" three lines
+        // tall and pushed "Profit" off the edge of the card entirely.
+        "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
@@ -88,7 +93,7 @@ export function Segmented<T extends string>({
               }
             }}
             className={cn(
-              "relative inline-flex items-center gap-1.5 rounded-md font-medium",
+              "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md font-medium",
               "transition-[background-color,color,box-shadow] duration-fast ease-out",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               "disabled:pointer-events-none disabled:opacity-40",

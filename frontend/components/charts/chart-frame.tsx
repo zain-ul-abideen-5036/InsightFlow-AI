@@ -60,7 +60,7 @@ export function ChartFrame({
             <p className="text-xs text-muted-foreground">{description}</p>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto">
           {actions}
           <Button
             variant="ghost"
