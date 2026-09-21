@@ -403,6 +403,44 @@ class TestAnomalyInvestigation:
         ok, offending = check_causal_language(prose)
         assert ok, f"investigation asserted a cause: {offending}"
 
+    def test_investigation_says_so_when_the_file_is_gone(
+        self, client: TestClient, workspace_with_anomaly
+    ):
+        """A vanished upload must be reported, not turned into a 500.
+
+        The investigation is recomputed from the file every time it is not
+        already cached, so storage that does not survive a restart — which is
+        what an ephemeral container filesystem gives you — makes this the first
+        thing the user hits. Reading a missing path raises FileNotFoundError,
+        which the catch-all handler turns into "something went wrong on our
+        side": a message that sends someone to support for a problem they can
+        fix themselves. `Ask` already answers this honestly; this path must too.
+        """
+        import shutil
+
+        from app.core.config import settings
+
+        env = workspace_with_anomaly
+        anomalies = client.get(
+            f"/api/v1/workspaces/{env['workspace_id']}/anomalies",
+            headers=env["owner"]["headers"],
+        ).json()["items"]
+        target = anomalies[0]["id"]
+
+        shutil.rmtree(settings.uploads_path / str(env["workspace_id"]), ignore_errors=True)
+
+        # `refresh` forces recomputation, which is the path that reads the file.
+        response = client.post(
+            f"/api/v1/workspaces/{env['workspace_id']}/anomalies/{target}/investigate"
+            "?refresh=true&narrate=false",
+            headers=env["owner"]["headers"],
+        )
+
+        assert response.status_code == 404, response.text
+        error = response.json()["error"]
+        assert "no longer available" in error["message"]
+        assert "upload" in (error.get("hint") or "").lower()
+
     def test_investigation_is_cached(self, client: TestClient, workspace_with_anomaly):
         env = workspace_with_anomaly
         anomalies = client.get(

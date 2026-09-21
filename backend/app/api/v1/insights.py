@@ -240,6 +240,19 @@ def investigate(
         path = Path(stored)
         if not path.is_absolute():
             path = settings.storage_path / path
+        # An investigation is computed from the file, not from the stored
+        # anomaly, so a file that is gone has to be said out loud. Without this
+        # the read below raises FileNotFoundError and the user is told
+        # "something went wrong on our side", which sends them to support for a
+        # problem they can fix themselves by uploading the dataset again. It
+        # happens whenever storage is not persistent — a container restart on a
+        # host with an ephemeral filesystem is enough. `Ask` already answers
+        # this way (see chat.py); this path was the one that did not.
+        if not path.exists():
+            raise NotFoundError(
+                "The file behind this dataset is no longer available.",
+                hint="Upload the dataset again to investigate this anomaly.",
+            )
 
         frame = load_frame(path)
         role_map = {
