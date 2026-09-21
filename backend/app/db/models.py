@@ -21,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -631,3 +632,22 @@ class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     user_agent: Mapped[str | None] = mapped_column(String(255))
     request_id: Mapped[str | None] = mapped_column(String(32))
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class StoredFile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """An uploaded file, when the deployment has no durable filesystem.
+
+    Only written by ``DatabaseFileStorage`` (see ``app/core/storage.py``); a
+    deployment using the local backend never creates a row here. Deliberately
+    *not* foreign-keyed to ``datasets``: the key namespace is the filesystem
+    layout (``uploads/<workspace>/<dataset>/<name>``), one dataset owns several
+    files, and deletion is by prefix — exactly as removing a directory works.
+    Keeping the two models identical is what lets ``Dataset.storage_path`` mean
+    the same thing on either backend.
+    """
+
+    __tablename__ = "stored_files"
+
+    key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True, index=True)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)

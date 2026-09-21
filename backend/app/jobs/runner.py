@@ -1,19 +1,36 @@
-"""Asynchronous analysis jobs.
+"""Analysis jobs.
 
-A deliberately small mechanism: a bounded thread pool plus the ``analyses``
-table acting as the job record. There is no Celery, Redis, or message broker,
-because the requirement is a *reliable* job runner and extra infrastructure
-would be the single biggest obstacle to someone deploying this.
+A deliberately small mechanism: the ``analyses`` table *is* the job record.
+There is no Celery, Redis, or message broker, because the requirement is a
+*reliable* job runner and extra infrastructure would be the single biggest
+obstacle to someone deploying this.
 
-What this gives us:
+What the table buys us, in either mode:
 
-* pandas work runs off the request thread, so uploads return immediately
 * progress is committed after every stage, so it is durable and pollable
 * a crashed or killed process leaves rows in ``running``; those are reconciled
-  at start-up rather than hanging forever
+  rather than hanging forever
+* a job is claimed with one conditional UPDATE, so it cannot run twice
 
-The interface is narrow (``submit_analysis``), so replacing the pool with a
-broker later touches this file and nothing else.
+Two ways the work actually happens, chosen by ``ANALYSIS_EXECUTION``:
+
+``thread``
+    A bounded pool inside this process. pandas work runs off the request
+    thread, so the upload returns immediately. Correct for anything that is a
+    running server — a laptop, a container, a VM.
+
+``request``
+    The work runs inside an explicit ``POST /analyses/{id}/run``. This exists
+    for serverless platforms, which may freeze or discard an instance as soon
+    as it has produced a response: a thread started behind the reply is not
+    merely slower there, it may never be scheduled, and the row would sit
+    ``queued`` forever with nothing to explain why. Giving the run its own
+    request is what turns background work into something the platform will let
+    finish. Nothing the user sees changes — the client polls the same status
+    endpoint and renders the same stages.
+
+The interface is narrow (``submit_analysis``, ``run_analysis_now``), so
+replacing either mechanism later touches this file and nothing else.
 """
 
 from __future__ import annotations
@@ -28,7 +45,7 @@ from typing import Any
 from sqlalchemy import select, update
 
 from app.analytics.context import build_context
-from app.analytics.ingestion import load_frame
+from app.analytics.ingestion import read_dataset_frame
 from app.analytics.pipeline import STAGES, run_analysis
 from app.analytics.types import Grain
 from app.core.config import settings
@@ -82,9 +99,35 @@ def initial_stages() -> list[dict[str, Any]]:
 
 
 def submit_analysis(analysis_id: uuid.UUID) -> None:
-    """Queue an analysis for background execution."""
+    """Hand an analysis over to be run.
+
+    In ``thread`` mode that means starting it now, behind the response. In
+    ``request`` mode it means doing nothing at all: the row stays ``queued``
+    until something calls :func:`run_analysis_now`, because a platform that
+    freezes an instance once it has replied may never run a thread started here.
+    Pretending otherwise would leave the row queued forever with no error to
+    explain it, which is worse than not starting.
+    """
+    if settings.analysis_execution == "request":
+        logger.info(
+            "analysis queued; awaiting an explicit run request",
+            extra={"analysis_id": str(analysis_id)},
+        )
+        return
+
     get_executor().submit(_run_job, analysis_id)
     logger.info("analysis queued", extra={"analysis_id": str(analysis_id)})
+
+
+def run_analysis_now(analysis_id: uuid.UUID) -> bool:
+    """Run a queued analysis on the calling thread. Returns whether it ran.
+
+    ``False`` means another caller already claimed it — a second browser tab, a
+    retried request, or the thread pool in ``thread`` mode. The claim is atomic
+    (see :func:`_claim`), so a duplicate call is a no-op rather than a second
+    set of metrics and insights written against the same analysis.
+    """
+    return _run_job(analysis_id)
 
 
 def reconcile_stale_jobs() -> int:
@@ -116,18 +159,49 @@ def reconcile_stale_jobs() -> int:
 # --------------------------------------------------------------------------- #
 
 
-def _run_job(analysis_id: uuid.UUID) -> None:
+def _claim(analysis_id: uuid.UUID) -> bool:
+    """Move an analysis from ``queued`` to ``running``, once.
+
+    A single conditional UPDATE rather than a read followed by a write. Two
+    callers can genuinely race here — in ``request`` mode the browser triggers
+    the run, so a double-click or a reopened tab is two requests — and the
+    read-then-write version lets both pass the check, run the whole analysis,
+    and write two complete sets of metrics, insights and anomalies against one
+    analysis id. The database decides instead: exactly one UPDATE matches.
+    """
+    now = datetime.now(timezone.utc)
+    with session_scope() as db:
+        result = db.execute(
+            update(Analysis)
+            .where(Analysis.id == analysis_id, Analysis.status == JobStatus.QUEUED)
+            .values(
+                status=JobStatus.RUNNING,
+                started_at=now,
+                stage=STAGES[0][0],
+                stages=initial_stages(),
+                progress=0,
+            )
+        )
+        return bool(result.rowcount)
+
+
+def _run_job(analysis_id: uuid.UUID) -> bool:
     set_request_id(f"job-{str(analysis_id)[:8]}")
     started = time.perf_counter()
+
+    if not _claim(analysis_id):
+        logger.info(
+            "analysis not claimed; already running or finished",
+            extra={"analysis_id": str(analysis_id)},
+        )
+        return False
 
     try:
         with session_scope() as db:
             analysis = db.get(Analysis, analysis_id)
             if analysis is None:
                 logger.error("analysis not found", extra={"analysis_id": str(analysis_id)})
-                return
-            if analysis.status not in (JobStatus.QUEUED, JobStatus.RUNNING):
-                return
+                return False
 
             dataset = db.get(Dataset, analysis.dataset_id)
             if dataset is None:
@@ -136,15 +210,13 @@ def _run_job(analysis_id: uuid.UUID) -> None:
                     "The dataset for this analysis no longer exists.",
                     "Upload the file again.",
                 )
-                return
+                return False
 
-            analysis.status = JobStatus.RUNNING
-            analysis.started_at = datetime.now(timezone.utc)
-            analysis.stage = STAGES[0][0]
-            analysis.stages = initial_stages()
+            # Status, stage and stages were set by the claim above.
             workspace_id = analysis.workspace_id
             dataset_id = dataset.id
-            storage_path = dataset.normalized_path or dataset.storage_path
+            storage_path = dataset.storage_path
+            normalized_path = dataset.normalized_path
             role_map = _effective_role_map(db, dataset)
             grain_value = (
                 analysis.params.get("grain")
@@ -159,7 +231,7 @@ def _run_job(analysis_id: uuid.UUID) -> None:
         # Heavy work happens outside the session so we never hold a connection
         # (or a SQLite write lock) open for the duration of the analysis.
         # ------------------------------------------------------------------ #
-        frame = load_frame(_resolve_path(storage_path))
+        frame = read_dataset_frame(storage_path, normalized_path)
         ctx = build_context(
             frame,
             role_map,
@@ -187,6 +259,7 @@ def _run_job(analysis_id: uuid.UUID) -> None:
                 "anomalies": len(output.anomalies),
             },
         )
+        return True
 
     except FileNotFoundError:
         _fail_by_id(
@@ -194,6 +267,7 @@ def _run_job(analysis_id: uuid.UUID) -> None:
             "The uploaded file could not be found on the server.",
             "Upload the dataset again.",
         )
+        return False
     except Exception as exc:  # noqa: BLE001 - a failed job must never kill the worker
         logger.exception("analysis failed", extra={"analysis_id": str(analysis_id)})
         _fail_by_id(
@@ -203,13 +277,7 @@ def _run_job(analysis_id: uuid.UUID) -> None:
             "Check that the detected fields are correct, then try again.",
             detail=str(exc)[:500],
         )
-
-
-def _resolve_path(path_value: str):
-    from pathlib import Path
-
-    path = Path(path_value)
-    return path if path.is_absolute() else (settings.storage_path / path)
+        return False
 
 
 def _effective_role_map(db, dataset: Dataset) -> dict[str, str]:

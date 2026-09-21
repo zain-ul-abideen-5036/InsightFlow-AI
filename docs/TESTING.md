@@ -9,7 +9,7 @@ cd backend && pytest
 # Frontend — 80 tests, typecheck, lint
 cd frontend && npm run check
 
-# Full-stack acceptance — 75 checks, needs both servers running
+# Full-stack acceptance — 76 checks, needs both servers running
 cd backend && python scripts/acceptance_check.py
 
 # Browser end to end — 11 tests, needs both servers running
@@ -53,10 +53,25 @@ So the suite spends most of its effort on four things:
 | `test_demo.py` | 12 | Demo isolation, expiry, file clean-up |
 | `test_client_identity.py` | 12 | The rate-limit trust boundary |
 | `test_ai_budget.py` | 11 | The bound on model time per request |
-| **Total** | **277** | |
+| `test_deployment_modes.py` | 21 | The serverless configuration: files in the database, analyses in a request |
+| **Total** | **299** | |
 
 **The whole suite runs with `AI_ENABLED=false`**, which means it also proves
 continuously that the product is fully functional without a model.
+
+### Both deployment shapes
+
+`test_deployment_modes.py` runs the product on the settings a serverless host
+needs — `STORAGE_BACKEND=database` and `ANALYSIS_EXECUTION=request` — and
+asserts the *same known answers* the filesystem journey asserts in
+`test_e2e_flow.py`: February revenue of 1200 against January's 1000, a change of
+exactly +20%. That is the point of having it. A deployment setting that altered
+a figure would fail here rather than in production.
+
+It also covers the things only the new shape can get wrong: that two run
+requests cannot write two sets of results, that a run abandoned by a killed
+invocation is reported as interrupted rather than spinning forever, and that a
+dataset whose stored file has gone says so instead of raising.
 
 ### Analytical correctness
 
@@ -170,7 +185,7 @@ python scripts/acceptance_check.py --frontend https://your-app.vercel.app
 python scripts/acceptance_check.py --timeout 900
 ```
 
-75 checks driving the complete journey **through the Next.js layer with a real
+76 checks driving the complete journey **through the Next.js layer with a real
 session cookie**, not against the API directly — so it exercises the proxy, the
 cookie handling, the middleware redirects, and server-side rendering as well as
 the API.
@@ -278,7 +293,7 @@ the test is loosened.
 
 | Suite | Count |
 | --- | --- |
-| Backend | 278 passed |
+| Backend | 299 passed |
 | Frontend | 80 passed |
 | Playwright | 11 passed |
-| Acceptance | 75/75 |
+| Acceptance | 76/76 |

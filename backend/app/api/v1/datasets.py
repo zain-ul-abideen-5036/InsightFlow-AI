@@ -9,7 +9,12 @@ from pathlib import Path
 from fastapi import APIRouter, File, Query, Request, UploadFile, status
 from sqlalchemy import func, select
 
-from app.analytics.ingestion import checksum, read_upload, validate_upload
+from app.analytics.ingestion import (
+    checksum,
+    frame_to_parquet_bytes,
+    read_upload,
+    validate_upload,
+)
 from app.analytics.profiling import column_summary, profile_dataset
 from app.analytics.schema_inference import ColumnInference
 from app.analytics.types import ROLE_LABELS, Grain, SemanticRole
@@ -23,6 +28,7 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.errors import ConflictError, DatasetError, FileValidationError, ValidationError
 from app.core.logging import get_logger
+from app.core.storage import get_storage, storage_key
 from app.db.models import Analysis, Dataset, DatasetColumn, DatasetStatus, DatasetVersion, JobStatus
 from app.jobs.runner import initial_stages, submit_analysis
 from app.schemas.api import (
@@ -39,10 +45,13 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/workspaces/{workspace_id}/datasets", tags=["datasets"])
 
 
-def _storage_dir(workspace_id: uuid.UUID, dataset_id: uuid.UUID) -> Path:
-    path = settings.uploads_path / str(workspace_id) / str(dataset_id)
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+def _dataset_prefix(workspace_id: uuid.UUID, dataset_id: uuid.UUID) -> str:
+    """Where this dataset's files live, as a storage key prefix.
+
+    Identical to the directory layout the local backend writes, so a key means
+    the same thing whichever backend is configured.
+    """
+    return storage_key("uploads", str(workspace_id), str(dataset_id))
 
 
 def _persist_columns(db: DbSession, dataset: Dataset, columns: list[ColumnInference]) -> None:
@@ -131,17 +140,19 @@ async def upload_dataset(
     db.add(dataset)
     db.flush()
 
-    directory = _storage_dir(workspace.id, dataset.id)
-    raw_path = directory / filename
-    raw_path.write_bytes(raw)
-    dataset.storage_path = str(raw_path.relative_to(settings.storage_path))
+    storage = get_storage()
+    prefix = _dataset_prefix(workspace.id, dataset.id)
+
+    raw_key = storage_key(prefix, filename)
+    storage.write(raw_key, raw, db=db)
+    dataset.storage_path = raw_key
 
     # A normalised Parquet copy makes every later analysis a fast columnar read
     # rather than a repeated CSV parse.
     try:
-        normalized = directory / "normalized.parquet"
-        result.frame.to_parquet(normalized, index=False)
-        dataset.normalized_path = str(normalized.relative_to(settings.storage_path))
+        normalized_key = storage_key(prefix, "normalized.parquet")
+        storage.write(normalized_key, frame_to_parquet_bytes(result.frame), db=db)
+        dataset.normalized_path = normalized_key
     except Exception as exc:  # noqa: BLE001 - the raw file remains authoritative
         logger.warning(
             "could not write parquet cache",
@@ -355,7 +366,7 @@ def delete_dataset(
     request: Request,
 ) -> MessageResponse:
     """Delete a dataset, its analyses, and its files."""
-    directory = settings.uploads_path / str(workspace.id) / str(dataset.id)
+    prefix = _dataset_prefix(workspace.id, dataset.id)
     dataset_name = dataset.name
 
     record_audit(
@@ -369,14 +380,11 @@ def delete_dataset(
     # Files are removed after the transaction commits: an orphaned file is
     # recoverable, an orphaned database row pointing at deleted data is not.
     try:
-        if directory.exists():
-            for path in sorted(directory.rglob("*"), reverse=True):
-                path.unlink() if path.is_file() else path.rmdir()
-            directory.rmdir()
-    except OSError as exc:
+        get_storage().delete_prefix(prefix)
+    except Exception as exc:  # noqa: BLE001
         logger.warning(
             "could not remove dataset files",
-            extra={"dataset_id": str(dataset.id), "reason": str(exc)[:200]},
+            extra={"prefix": prefix, "reason": str(exc)[:200]},
         )
 
     return MessageResponse(message=f"'{dataset_name}' has been deleted.")

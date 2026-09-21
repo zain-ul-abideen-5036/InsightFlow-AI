@@ -44,9 +44,14 @@ def _build_engine() -> Engine:
     else:
         engine = create_engine(
             url,
+            # A pooled connection can be closed from the far end between uses —
+            # by a proxy's idle timeout, or by a serverless database that
+            # suspended while nobody was asking it anything. Pre-ping turns the
+            # stale connection that results into a reconnect rather than an
+            # error on a request that did nothing wrong.
             pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
             pool_recycle=1800,
             future=True,
         )
@@ -100,7 +105,16 @@ def init_db() -> None:
 
     Alembic owns schema migrations for production; this path exists so that
     local development and the test suite are usable without a migration step.
+    ``AUTO_CREATE_TABLES`` turns it off, and a production deployment turns it
+    off by default — see ``Settings._validate_production_secrets``.
     """
+    if not settings.auto_create_tables:
+        logger.info(
+            "skipping table creation; the schema is owned by Alembic",
+            extra={"dialect": engine.dialect.name},
+        )
+        return
+
     from app.db import models  # noqa: F401  (register mappers)
     from app.db.base import Base
 

@@ -182,6 +182,26 @@ export const api = {
       body: json({ dataset_id: datasetId, grain }),
     }),
 
+  /**
+   * Ask the backend to run a queued analysis, and wait for it.
+   *
+   * Sent once, alongside the progress poll rather than instead of it. The two
+   * are independent on purpose: this request stays open for as long as the
+   * analysis takes, while the poll keeps the stage list moving.
+   *
+   * Every deployment gets this call, because the client has no business knowing
+   * which one it is talking to. Where the backend runs analyses in a thread
+   * pool it has already claimed the job and this returns the current status
+   * immediately; where it cannot — a serverless platform that stops executing
+   * the moment it has replied — this request *is* the analysis. The backend
+   * claims the job with a single conditional update either way, so an extra
+   * call can never produce a second run.
+   */
+  runAnalysis: (workspaceId: string, analysisId: string) =>
+    request<Analysis>(`/workspaces/${workspaceId}/analyses/${analysisId}/run`, {
+      method: "POST",
+    }),
+
   // -- Insights -----------------------------------------------------------
   insights: (workspaceId: string, params: Record<string, string> = {}) => {
     const query = new URLSearchParams(params).toString();

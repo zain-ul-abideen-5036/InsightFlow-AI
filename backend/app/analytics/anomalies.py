@@ -288,7 +288,11 @@ def detect_multivariate(
     try:
         from sklearn.ensemble import IsolationForest
         from sklearn.preprocessing import StandardScaler
-    except ImportError:  # pragma: no cover - scikit-learn is a hard dependency
+    except ImportError:  # pragma: no cover - installed in every supported deployment
+        # scikit-learn is optional, and this is the whole cost of leaving it
+        # out: one detector of several goes quiet. The z-score, IQR and
+        # seasonal detectors are unaffected, so a deployment that drops the
+        # wheel to fit a bundle limit loses breadth, not correctness.
         return []
 
     scaled = StandardScaler().fit_transform(matrix)

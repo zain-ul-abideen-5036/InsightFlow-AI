@@ -1,0 +1,39 @@
+# Files that must not reach a deployment.
+#
+# Python functions on Vercel bundle everything reachable at build time — there
+# is no tree-shaking — so anything listed here is size that would otherwise
+# count against the 500 MB limit, or content that simply has no business being
+# on a server.
+
+# Tests and fixtures. Never executed in production.
+backend/tests/
+frontend/tests/
+frontend/e2e/
+frontend/playwright.config.ts
+frontend/vitest.config.ts
+
+# Local data. `backend/storage/` is a development-only filesystem store; a
+# Vercel deployment uses STORAGE_BACKEND=database and must never ship one
+# developer's uploaded spreadsheets.
+backend/storage/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# Local-only tooling. The container path is for `docker compose`, not Vercel.
+backend/Dockerfile
+backend/.dockerignore
+frontend/.dockerignore
+docker-compose.yml
+
+# Documentation and screenshots. Read on GitHub, not served by the app.
+docs/
+*.md
+!README.md
+
+# Caches and build leftovers.
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+.github/

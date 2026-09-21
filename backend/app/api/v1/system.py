@@ -30,20 +30,16 @@ def _database_reachable() -> bool:
 
 
 def _storage_writable() -> bool:
-    """Uploads land on disk, so a read-only volume means requests will fail.
+    """Uploads have to land somewhere, so probe wherever that is.
 
-    Worth probing separately: a container whose persistent volume failed to
-    mount starts cleanly, answers /health, and then rejects every upload.
+    Worth probing separately from the database: a container whose persistent
+    volume failed to mount starts cleanly, answers /health, and then rejects
+    every upload. The configured backend answers for itself — see
+    ``app/core/storage.py``.
     """
-    try:
-        path = settings.uploads_path
-        path.mkdir(parents=True, exist_ok=True)
-        probe = path / ".readiness"
-        probe.write_text("ok", encoding="utf-8")
-        probe.unlink(missing_ok=True)
-        return True
-    except Exception:  # noqa: BLE001
-        return False
+    from app.core.storage import get_storage
+
+    return get_storage().healthy()
 
 
 @router.get("/health", response_model=HealthResponse)

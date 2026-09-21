@@ -31,6 +31,7 @@ import { AnomalyRow } from "@/features/anomalies/anomaly-row";
 import { KpiCard } from "@/features/dashboard/kpi-card";
 import { InsightCard } from "@/features/insights/insight-card";
 import { api, queryKeys } from "@/lib/api-client";
+import { MAX_UPLOAD_MB } from "@/lib/site";
 import { cn, formatRelativeTime, formatValue, severityRank } from "@/lib/utils";
 import type {
   Analysis,
@@ -587,7 +588,7 @@ function NoDataState() {
             <Link href="/onboarding">Use sample data</Link>
           </Button>
         }
-        footnote="CSV, TSV or Excel, up to 50 MB. Nothing leaves your workspace."
+        footnote={`CSV, TSV or Excel, up to ${MAX_UPLOAD_MB} MB. Nothing leaves your workspace.`}
       />
     </div>
   );

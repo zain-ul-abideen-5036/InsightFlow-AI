@@ -152,7 +152,7 @@ def start_demo(request: Request, db: DbSession) -> TokenResponse:
     generated, and it is deleted after ``DEMO_SESSION_HOURS`` together with its
     files.
     """
-    from app.jobs.runner import submit_analysis
+    from app.jobs.runner import run_analysis_now, submit_analysis
     from app.seed.demo import create_demo_session
 
     user, workspace, analysis = create_demo_session(db)
@@ -167,6 +167,18 @@ def start_demo(request: Request, db: DbSession) -> TokenResponse:
 
     # After the commit, never before: the worker thread looks the row up by id.
     submit_analysis(analysis.id)
+
+    # Where nothing runs behind a response, run it here instead.
+    #
+    # The demo has no screen on which to trigger the run: it hands back a
+    # session and the visitor lands on a dashboard. Leaving the analysis queued
+    # would mean the one flow designed to need no steps is the only one that
+    # arrives empty. Measured at ~4s on this dataset, against the ~9s the
+    # endpoint already spends generating and profiling it, so the visitor waits
+    # a little longer once rather than looking at a blank overview.
+    if settings.analysis_execution == "request":
+        run_analysis_now(analysis.id)
+        db.refresh(analysis)
 
     logger.info("demo session started", extra={"workspace_id": str(workspace.id)})
     return _issue_tokens(db, user)

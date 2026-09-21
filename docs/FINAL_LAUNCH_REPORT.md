@@ -190,14 +190,28 @@ the assertion that would have caught all three earlier.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| **Frontend** | **Vercel** | A standard Next.js deployment. Root directory `frontend`; everything else detected. Verified with a production build on the final code. |
-| **Backend** | **A container host** (Render, Fly.io, Railway, or a VPS) | Not Vercel, deliberately: analysis is a multi-second pandas workload on a background thread pool, uploads need a persistent volume, and the job runner keeps state in-process. `backend/Dockerfile` is multi-stage, non-root, health-checked, and applies migrations on start-up. |
-| **Database** | **PostgreSQL** (Neon, Supabase, or the host's) | SQLite is development-only, and production start-up refuses to run without `DATABASE_URL`. |
+| **Frontend** | **Vercel**, service `web` | A standard Next.js deployment. Verified with a production build on the final code. |
+| **Backend** | **Vercel**, service `api` | Both halves are services in one Vercel project, declared in `vercel.json`, sharing one domain and one set of environment variables. The `api` service has no public address; the frontend reaches it over an internal binding. |
+| **Database** | **Neon PostgreSQL** | SQLite is development-only, and production start-up refuses to run without `DATABASE_URL`. Uploaded files live here too, under `STORAGE_BACKEND=database`. |
 | **AI** | **Configurable, and optional** | `ollama`, any OpenAI-compatible endpoint, or `none`. The product is fully functional with `AI_ENABLED=false`, and the whole test suite proves it continuously. |
 
-The two halves connect over HTTPS with a bearer token attached server-side.
+The two halves connect with a bearer token attached server-side.
 **No CORS configuration is needed in production**, because the browser only
 ever talks to its own origin.
+
+> **Superseded, September 2026.** This table originally said the backend could
+> not run on Vercel, for three reasons: analysis is a multi-second pandas
+> workload on a background thread pool, uploads need a persistent volume, and
+> the job runner keeps state in-process. All three were real. Each was
+> addressed with a setting rather than a rewrite —
+> `ANALYSIS_EXECUTION=request`, `STORAGE_BACKEND=database`, and an atomic job
+> claim — leaving the analytics engine untouched and the product identical
+> from the outside. The cost is a 4 MB upload ceiling instead of 50 MB. See
+> [DEPLOYMENT.md §0](DEPLOYMENT.md#0-what-runs-where-and-why).
+>
+> `backend/Dockerfile` is still production-ready — multi-stage, non-root,
+> health-checked, applying migrations on start-up — and remains the right
+> choice for larger uploads or longer analyses.
 
 `PROXY_SHARED_SECRET` must be set identically on both halves. Without it the
 backend rate-limits on the frontend's address, so every user of the product

@@ -18,17 +18,30 @@ bcrypt==4.2.1
 PyJWT==2.10.1
 
 # ---- Data / analytics ----------------------------------------------------
+#
+# These wheels dominate the deployed size, which matters on a serverless
+# platform: Vercel caps a Python function bundle at 500 MB uncompressed. The
+# list below measures ~330 MB installed, so there is room — but only because it
+# holds nothing that is merely imaginable. scipy was declared here and imported
+# nowhere (134 MB of it), which is why it is gone.
+#
+# Two entries are genuinely optional, and the code says so rather than assuming:
+#   scikit-learn — Isolation Forest, one of several anomaly detectors. Without
+#                  it `multivariate_anomalies` returns nothing and the z-score,
+#                  IQR and seasonal detectors carry on unaffected.
+#   pyarrow      — the normalised Parquet cache. Without it the original CSV is
+#                  re-parsed on every read, which is slower and identical.
+# Drop either one if a bundle limit ever bites. Nothing else here is optional.
 pandas==2.2.3
 numpy==2.2.1
-scipy==1.15.0
-scikit-learn==1.6.0
+scikit-learn==1.6.0             # optional: Isolation Forest anomalies
 openpyxl==3.1.5                 # XLSX reading
-pyarrow==18.1.0                 # normalised Parquet cache
+pyarrow==18.1.0                 # optional: normalised Parquet cache
 charset-normalizer==3.4.1       # encoding detection
 
 # ---- HTTP client (AI providers) -----------------------------------------
 httpx==0.28.1
 
 # ---- Testing -------------------------------------------------------------
-pytest==8.3.4
-pytest-cov==6.0.0
+# In requirements-dev.txt, not here. Anything listed in this file is installed
+# into the deployed function, and a test runner has no business being there.

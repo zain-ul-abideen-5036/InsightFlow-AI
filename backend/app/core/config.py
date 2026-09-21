@@ -39,6 +39,23 @@ class Settings(BaseSettings):
 
     # -- Database ------------------------------------------------------------
     database_url: str = ""
+    # Connection pool, per process. The defaults suit one long-lived server.
+    #
+    # A serverless deployment wants them smaller — every warm instance holds its
+    # own pool and they multiply as the platform adds instances — but not tiny,
+    # because a request that has to wait for a connection is a request that
+    # fails slowly. Around 5 and 5, paired with a pooling endpoint such as
+    # Neon's `-pooler` host, which exists to absorb exactly this. See
+    # DB_POOL_SIZE in .env.example.
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    # Create any missing tables at start-up.
+    #
+    # A convenience for development and the test suite, where there is no
+    # migration step. Alembic owns the schema in production, and creating tables
+    # from the models there would silently paper over a migration that was never
+    # written — so it is off whenever a production deployment is declared.
+    auto_create_tables: bool = True
 
     # -- Security ------------------------------------------------------------
     secret_key: str = DEV_SECRET_PLACEHOLDER
@@ -79,6 +96,14 @@ class Settings(BaseSettings):
     auth_rate_limit_window_seconds: int = 300
 
     # -- Uploads -------------------------------------------------------------
+    # Where uploaded files are kept. See app/core/storage.py.
+    #
+    # "local"    — a directory. Correct for a laptop, a container with a volume,
+    #              or a VM. The default, so nothing local changes.
+    # "database" — rows in PostgreSQL. For platforms whose filesystem is private
+    #              to one instance and erased without notice, which would make
+    #              `Ask` and `Investigate` fail on a dataset the user can see.
+    storage_backend: Literal["local", "database"] = "local"
     storage_dir: str = "./storage"
     max_upload_size_mb: int = 50
     allowed_upload_extensions: str = ".csv,.xlsx,.xls,.tsv"
@@ -86,9 +111,35 @@ class Settings(BaseSettings):
     max_analysis_rows: int = 500_000
 
     # -- Jobs ----------------------------------------------------------------
+    # How an analysis actually gets run.
+    #
+    # "thread"  — a bounded pool inside this process. The upload request returns
+    #             at once and the work continues behind it. Correct for any
+    #             deployment that is a running server.
+    # "request" — the work happens inside an explicit `POST /analyses/{id}/run`
+    #             call. Serverless platforms freeze or discard an instance the
+    #             moment it has answered, so a thread started behind a response
+    #             is not merely slower — it may never run at all, leaving the
+    #             row queued forever. Making the run its own request is what
+    #             turns "background work" into something the platform will
+    #             actually let finish. The client still polls the same status
+    #             endpoint, so the staged progress UI is unchanged.
+    analysis_execution: Literal["thread", "request"] = "thread"
     analysis_workers: int = 2
     analysis_timeout_seconds: int = 600
     analysis_stale_minutes: int = 30
+
+    # -- Start-up ------------------------------------------------------------
+    # Run the housekeeping in the lifespan hook: reconcile interrupted jobs,
+    # purge expired demo workspaces, warm the local model.
+    #
+    # On a server this happens once per boot and is cheap. On serverless it
+    # happens on every cold start, turning three database round trips into a tax
+    # on unpredictable requests — and the warm-up thread is pointless there for
+    # the same reason the job pool is. Each task has another trigger: stale jobs
+    # are reconciled when a stale one is polled, and demo sessions are purged
+    # whenever a demo is created.
+    startup_tasks_enabled: bool = True
 
     # -- AI ------------------------------------------------------------------
     ai_provider: Literal["ollama", "openai", "none"] = "ollama"
@@ -154,6 +205,12 @@ class Settings(BaseSettings):
                 )
             if self.ai_provider == "openai" and not self.openai_api_key:
                 raise ValueError("OPENAI_API_KEY is required when AI_PROVIDER=openai.")
+            # Alembic owns the schema in production. Creating tables from the
+            # models instead would hide a missing migration until the next
+            # deployment that *did* run one, so the default flips here rather
+            # than relying on every deployment to remember the variable.
+            if "auto_create_tables" not in self.model_fields_set:
+                self.auto_create_tables = False
         elif not self.secret_key:
             # Never leave signing unkeyed, even in development.
             self.secret_key = secrets.token_urlsafe(48)
