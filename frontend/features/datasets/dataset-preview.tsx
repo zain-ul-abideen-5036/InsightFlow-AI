@@ -55,18 +55,18 @@ export function DatasetPreview({ dataset }: { dataset: DatasetDetail }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(({ icon: Icon, label, value }) => (
-          <div key={label} className="rounded-lg border border-border bg-card p-4">
+          <div key={label} className="rounded-xl border border-border bg-card p-4 shadow-e1">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Icon className="size-3.5" aria-hidden="true" />
-              <span className="text-2xs font-medium uppercase tracking-wide">{label}</span>
+              <span className="eyebrow">{label}</span>
             </div>
-            <p className="mt-1.5 text-sm font-semibold">{value}</p>
+            <p className="mt-1.5 text-base font-semibold">{value}</p>
           </div>
         ))}
       </div>
 
       {seriousIssues.length ? (
-        <div className="space-y-2 rounded-lg border border-warning/30 bg-warning-subtle px-4 py-3">
+        <div className="space-y-2 rounded-xl border border-warning-border bg-warning-subtle px-4 py-3.5">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 shrink-0 text-warning" aria-hidden="true" />
             <p className="text-sm font-medium">
@@ -84,9 +84,9 @@ export function DatasetPreview({ dataset }: { dataset: DatasetDetail }) {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-border">
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-          <p className="text-sm font-medium">First {dataset.preview_rows.length} rows</p>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <p className="text-sm font-semibold">First {dataset.preview_rows.length} rows</p>
           <Badge variant="neutral">{dataset.original_filename}</Badge>
         </div>
         <Table caption={`Preview of the first rows of ${dataset.original_filename}`}>

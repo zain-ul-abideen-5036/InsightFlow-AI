@@ -2,7 +2,15 @@
 
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  FileSpreadsheet,
+  MessageSquareText,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 import { ErrorState } from "@/components/states/error-state";
 import { Button } from "@/components/ui/button";
@@ -12,18 +20,12 @@ import { AnalysisProgress } from "@/features/analysis/analysis-progress";
 import { DatasetPreview } from "@/features/datasets/dataset-preview";
 import { FieldReview, type FieldSelection } from "@/features/datasets/field-review";
 import { UploadDropzone } from "@/features/datasets/upload-dropzone";
+import { UPLOAD_STEPS, UploadStepper } from "@/features/datasets/upload-stepper";
 import { api, ClientApiError, queryKeys } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { DatasetDetail, Grain } from "@/types/api";
 
 type Step = "upload" | "preview" | "review" | "analysing";
-
-const STEPS: { key: Step; label: string }[] = [
-  { key: "upload", label: "Upload" },
-  { key: "preview", label: "Preview" },
-  { key: "review", label: "Review fields" },
-  { key: "analysing", label: "Analyse" },
-];
 
 /**
  * The upload-to-insight workflow.
@@ -94,11 +96,11 @@ export function DatasetWorkflow({
     },
   });
 
-  const activeIndex = STEPS.findIndex((item) => item.key === step);
+  const activeIndex = UPLOAD_STEPS.findIndex((item) => item.key === step);
 
   return (
     <div className="space-y-6">
-      <Stepper activeIndex={activeIndex} />
+      <UploadStepper activeIndex={activeIndex} />
 
       {step === "upload" ? (
         <div className="space-y-4">
@@ -109,16 +111,15 @@ export function DatasetWorkflow({
           />
 
           {demoEnabled ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5 shadow-e1">
               <div className="min-w-0">
-                <p className="text-sm font-medium">No data to hand?</p>
+                <p className="text-sm font-semibold">No data to hand?</p>
                 <p className="text-xs text-muted-foreground">
                   Load NovaMart — 14,000 orders across 15 months, with a real story in it.
                 </p>
               </div>
               <Button
                 variant="outline"
-                size="sm"
                 loading={loadDemo.isPending}
                 loadingText="Loading…"
                 onClick={() => loadDemo.mutate()}
@@ -128,14 +129,20 @@ export function DatasetWorkflow({
               </Button>
             </div>
           ) : null}
+
+          <WhatWeLookFor />
         </div>
       ) : null}
 
       {step === "preview" && dataset ? (
         <div className="space-y-4">
+          <ValidationSummary dataset={dataset} />
           <DatasetPreview dataset={dataset} />
-          <div className="flex justify-end">
-            <Button onClick={() => setStep("review")}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Nothing is analysed until you confirm what each column means.
+            </p>
+            <Button size="lg" onClick={() => setStep("review")}>
               Review detected fields
               <ArrowRight aria-hidden="true" />
             </Button>
@@ -205,62 +212,191 @@ function CompletionActions({
   if (data?.status !== "completed") return null;
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-center gap-2 space-y-0">
-        <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
-        <CardTitle className="text-sm">Ready to explore</CardTitle>
+    <Card tone="success" elevation="flat">
+      <CardHeader className="flex-row items-center gap-2.5 space-y-0">
+        <CheckCircle2 className="size-5 shrink-0 text-success" aria-hidden="true" />
+        <div>
+          <CardTitle>Ready to explore</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Your figures are computed. Start with what changed.
+          </p>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
-        <Button asChild>
+        <Button size="lg" asChild>
           <a href="/overview">
             View dashboard
             <ArrowRight aria-hidden="true" />
           </a>
         </Button>
-        <Button variant="outline" asChild>
+        <Button size="lg" variant="outline" asChild>
           <a href="/insights">See all insights</a>
         </Button>
-        <Button variant="outline" asChild>
-          <a href="/ask">Ask a question</a>
+        <Button size="lg" variant="outline" asChild>
+          <a href="/ask">
+            <MessageSquareText aria-hidden="true" />
+            Ask InsightFlow
+          </a>
         </Button>
       </CardContent>
     </Card>
   );
 }
 
-function Stepper({ activeIndex }: { activeIndex: number }) {
+/**
+ * What a good file looks like.
+ *
+ * Step one used to be a dashed rectangle and then four hundred pixels of
+ * nothing. This is the question a first-time user actually has at that
+ * moment, answered before they go and open their export to check.
+ */
+function WhatWeLookFor() {
+  const fields = [
+    {
+      label: "A date",
+      required: true,
+      body: "Order date, invoice date, transaction date. Any common format; mixed formats are fine.",
+    },
+    {
+      label: "An amount",
+      required: true,
+      body: "Revenue, total, or price. Currency symbols, thousands separators and accounting negatives are all handled.",
+    },
+    {
+      label: "Something to group by",
+      required: false,
+      body: "Product, category, region, channel or customer. Each one you have adds a dimension to break results down by.",
+    },
+    {
+      label: "Cost or quantity",
+      required: false,
+      body: "Adds margin, profit and units. Metrics your columns cannot support are reported as unavailable, never as zero.",
+    },
+  ];
+
   return (
-    <ol className="flex flex-wrap items-center gap-x-2 gap-y-2" aria-label="Upload progress">
-      {STEPS.map((item, index) => {
-        const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "todo";
-        return (
-          <li key={item.key} className="flex items-center gap-2">
-            <span
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full text-2xs font-semibold",
-                state === "done" && "bg-success text-success-foreground",
-                state === "current" && "bg-primary text-primary-foreground",
-                state === "todo" && "bg-muted text-muted-foreground",
-              )}
-              aria-hidden="true"
-            >
-              {state === "done" ? <CheckCircle2 className="size-3.5" /> : index + 1}
+    <section
+      aria-labelledby="what-we-look-for"
+      className="rounded-xl border border-border bg-surface-sunken/60 px-5 py-4"
+    >
+      <div className="flex items-center gap-2">
+        <FileSpreadsheet className="size-4 text-subtle-foreground" aria-hidden="true" />
+        <h2 id="what-we-look-for" className="eyebrow">
+          What we look for in your file
+        </h2>
+      </div>
+      <dl className="mt-3.5 grid gap-x-8 gap-y-3.5 sm:grid-cols-2">
+        {fields.map((field) => (
+          <div key={field.label} className="min-w-0">
+            <dt className="flex items-center gap-1.5 text-sm font-semibold">
+              {field.label}
+              {field.required ? (
+                <span className="rounded bg-muted px-1 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  required
+                </span>
+              ) : null}
+            </dt>
+            <dd className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {field.body}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-subtle-foreground">
+        One row per order or transaction. Title rows above the headers, duplicate column names
+        and unusual encodings are all recovered from rather than rejected.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * The file passed.
+ *
+ * The flow inspected the file thoroughly and then never said so — the user
+ * saw a table of their own rows and had to infer that nothing was wrong.
+ * Each line below is a real check the ingestion pipeline performed, and the
+ * ones that did not pass say so rather than being omitted.
+ */
+function ValidationSummary({ dataset }: { dataset: DatasetDetail }) {
+  const profile = dataset.profile;
+  const hasDate = Boolean(profile.date_min && profile.date_max);
+  // Counted from the dataset's own column records, not from the profile:
+  // `DatasetProfile` carries roles and quality, not per-column types.
+  const numericCount = dataset.columns.filter(
+    (column) => column.data_type === "number" || column.data_type === "integer",
+  ).length;
+
+  const checks = [
+    {
+      ok: true,
+      label: "Dataset readable",
+      detail: `${dataset.row_count.toLocaleString()} rows across ${dataset.column_count} columns.`,
+    },
+    {
+      ok: hasDate,
+      label: hasDate ? "Date field detected" : "No date field detected",
+      detail: hasDate
+        ? `${formatDate(profile.date_min)} to ${formatDate(profile.date_max)}.`
+        : "Trends and period comparisons need a date column. You can set one in the next step.",
+    },
+    {
+      ok: numericCount > 0,
+      label: numericCount > 0 ? "Numeric fields validated" : "No numeric fields found",
+      detail:
+        numericCount > 0
+          ? `${numericCount} numeric ${numericCount === 1 ? "column" : "columns"} parsed, including currency and accounting formats.`
+          : "Without an amount column there is nothing to total. Check the next step.",
+    },
+    {
+      ok: true,
+      label: "Fields understood",
+      detail: "Each column has a proposed meaning for you to confirm or correct.",
+    },
+  ];
+
+  const allPassed = checks.every((check) => check.ok);
+
+  return (
+    <section
+      aria-labelledby="validation-heading"
+      className={cn(
+        "rounded-xl border px-5 py-4",
+        allPassed ? "border-success-border bg-success-subtle/60" : "border-warning-border bg-warning-subtle/60",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <ShieldCheck
+          className={cn("size-4", allPassed ? "text-success" : "text-warning")}
+          aria-hidden="true"
+        />
+        <h2 id="validation-heading" className="text-sm font-semibold">
+          {allPassed ? "Your file checks out" : "Your file needs a look"}
+        </h2>
+      </div>
+      <ul className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+        {checks.map((check) => (
+          <li key={check.label} className="flex items-start gap-2">
+            {check.ok ? (
+              <CheckCircle2
+                className="mt-0.5 size-3.5 shrink-0 text-success"
+                aria-hidden="true"
+              />
+            ) : (
+              <AlertCircle
+                className="mt-0.5 size-3.5 shrink-0 text-warning"
+                aria-hidden="true"
+              />
+            )}
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">{check.label}</span>
+              <span className="block text-xs leading-relaxed text-muted-foreground">
+                {check.detail}
+              </span>
             </span>
-            <span
-              className={cn(
-                "text-sm",
-                state === "current" ? "font-medium text-foreground" : "text-muted-foreground",
-              )}
-              aria-current={state === "current" ? "step" : undefined}
-            >
-              {item.label}
-            </span>
-            {index < STEPS.length - 1 ? (
-              <span className="mx-1 hidden h-px w-6 bg-border sm:block" aria-hidden="true" />
-            ) : null}
           </li>
-        );
-      })}
-    </ol>
+        ))}
+      </ul>
+    </section>
   );
 }

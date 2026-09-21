@@ -77,13 +77,18 @@ export function UploadDropzone({
           accept(event.dataTransfer.files?.[0]);
         }}
         className={cn(
-          "relative flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed",
-          "px-6 py-12 text-center transition-colors",
-          dragging ? "border-primary bg-primary/5" : "border-border bg-surface",
+          "relative flex flex-col items-center justify-center gap-3.5 rounded-2xl border",
+          "px-6 py-11 text-center transition-[background-color,border-color] duration-base",
+          // A dashed outline reads as an unimplemented placeholder. The drop
+          // target is communicated by the surface and the icon instead, and
+          // the border only becomes dashed while a file is actually over it.
+          dragging
+            ? "border-2 border-dashed border-primary bg-primary-subtle"
+            : "border-border bg-card shadow-e1 hover:border-border-strong",
           uploading && "pointer-events-none opacity-60",
         )}
       >
-        <div className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <div className="flex size-12 items-center justify-center rounded-2xl border border-border bg-surface-sunken text-muted-foreground shadow-e0">
           {selected ? (
             <FileSpreadsheet className="size-5" aria-hidden="true" />
           ) : (
@@ -93,13 +98,13 @@ export function UploadDropzone({
 
         {selected ? (
           <div className="space-y-1">
-            <p className="text-sm font-medium">{selected.name}</p>
-            <p className="text-xs text-muted-foreground">{formatBytes(selected.size)}</p>
+            <p className="text-base font-semibold">{selected.name}</p>
+            <p className="text-sm text-muted-foreground">{formatBytes(selected.size)}</p>
           </div>
         ) : (
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
-              Drag a file here, or{" "}
+          <div className="space-y-1.5">
+            <p className="text-base font-semibold">
+              Drag your export here, or{" "}
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -108,7 +113,7 @@ export function UploadDropzone({
                 browse
               </button>
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               CSV, TSV, or Excel (.xlsx) — up to {MAX_MB} MB
             </p>
           </div>
@@ -124,7 +129,7 @@ export function UploadDropzone({
         />
 
         {uploading ? (
-          <p className="text-xs text-muted-foreground" role="status">
+          <p className="text-sm text-muted-foreground" role="status">
             Uploading and reading your file…
           </p>
         ) : null}
@@ -133,11 +138,11 @@ export function UploadDropzone({
       {message ? (
         <div
           role="alert"
-          className="flex items-start gap-2.5 rounded-md border border-danger/30 bg-danger-subtle px-3.5 py-3"
+          className="flex items-start gap-2.5 rounded-xl border border-danger-border bg-danger-subtle px-4 py-3.5"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
           <div className="min-w-0 flex-1 space-y-0.5">
-            <p className="text-sm font-medium">{message}</p>
+            <p className="text-sm font-semibold">{message}</p>
             {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
           </div>
           <Button
