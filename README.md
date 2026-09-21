@@ -224,8 +224,9 @@ Open <http://localhost:3000> and click **Explore the live demo**. No account, no
 password, no file — you will be looking at a full analysis of 14,000 orders
 within a few seconds.
 
-For PostgreSQL, Ollama, and production deploys, see
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+To put it online — free, about thirty minutes, no credit card — follow
+[docs/GO_LIVE.md](docs/GO_LIVE.md). For PostgreSQL, Ollama, and the reasoning
+behind the deployment choices, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
@@ -358,7 +359,7 @@ frontend/
   lib/           API client, session handling, formatting
   tests/         80 tests
 
-docs/            ARCHITECTURE.md · DEPLOYMENT.md · SECURITY.md
+docs/            ARCHITECTURE.md · GO_LIVE.md · DEPLOYMENT.md · SECURITY.md
                  AI_GUARDRAILS.md · TESTING.md · DEVELOPMENT.md
                  ENVIRONMENT.md · DEMO.md · PRODUCTION_AUDIT.md
                  FINAL_LAUNCH_REPORT.md · DESIGN_SYSTEM.md
@@ -388,6 +389,7 @@ should find in it.
 
 | | |
 | --- | --- |
+| [GO_LIVE.md](docs/GO_LIVE.md) | Deploy it, step by step: every account, every value, in order |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it is put together, and the deliberate non-goals |
 | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Getting it running, the layout, the conventions that are load-bearing |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Local setup through production, with exact commands |

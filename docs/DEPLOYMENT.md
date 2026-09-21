@@ -751,6 +751,11 @@ NEXT_PUBLIC_DEMO_ENABLED=true
 
 ## 14. The whole deploy, in order
 
+> Following this for the first time? [GO_LIVE.md](GO_LIVE.md) is the same
+> sequence written click by click — which button, which field, what each free
+> tier actually does, and what to do when a step fails. This section is the
+> condensed version for someone who has deployed before.
+
 Sections 11–13 explain each half. This is the sequence, start to finish, on the
 free tier. It takes about twenty minutes, most of it waiting for builds.
 
