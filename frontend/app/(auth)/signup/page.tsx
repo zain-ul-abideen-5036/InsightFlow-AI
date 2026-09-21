@@ -10,17 +10,17 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-7">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
+        <p className="text-md leading-relaxed text-muted-foreground">
           Upload a spreadsheet and see what changed in your business.
         </p>
       </div>
 
       <SignupForm />
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           href="/login"

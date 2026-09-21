@@ -106,7 +106,7 @@ export function ResetPasswordForm() {
   const errorBanner = error ? (
     <div
       role="alert"
-      className="flex items-start gap-2.5 rounded-md border border-danger/30 bg-danger-subtle px-3.5 py-3"
+      className="flex items-start gap-2.5 rounded-xl border border-danger-border bg-danger-subtle px-4 py-3.5"
     >
       <AlertCircle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
       <div className="space-y-0.5">
@@ -118,7 +118,7 @@ export function ResetPasswordForm() {
 
   if (token) {
     return (
-      <form onSubmit={setNewPassword} className="space-y-4" noValidate>
+      <form onSubmit={setNewPassword} className="space-y-5" noValidate>
         {errorBanner}
         <div className="space-y-2">
           <Label htmlFor="password" required>
@@ -135,7 +135,7 @@ export function ResetPasswordForm() {
           />
           <p className="text-xs text-muted-foreground">At least 8 characters.</p>
         </div>
-        <Button type="submit" className="w-full" loading={submitting} loadingText="Updating…">
+        <Button type="submit" size="lg" className="w-full" loading={submitting} loadingText="Updating…">
           Set new password
         </Button>
       </form>
@@ -143,9 +143,9 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={requestLink} className="space-y-4" noValidate>
+    <form onSubmit={requestLink} className="space-y-5" noValidate>
       {errorBanner}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <Label htmlFor="email" required>
           Email address
         </Label>
@@ -159,7 +159,7 @@ export function ResetPasswordForm() {
           autoFocus
         />
       </div>
-      <Button type="submit" className="w-full" loading={submitting} loadingText="Sending…">
+      <Button type="submit" size="lg" className="w-full" loading={submitting} loadingText="Sending…">
         Send reset link
       </Button>
     </form>

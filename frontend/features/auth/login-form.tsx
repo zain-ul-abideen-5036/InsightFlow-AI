@@ -65,11 +65,11 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       {error ? (
         <div
           role="alert"
-          className="flex items-start gap-2.5 rounded-md border border-danger/30 bg-danger-subtle px-3.5 py-3"
+          className="flex items-start gap-2.5 rounded-xl border border-danger-border bg-danger-subtle px-4 py-3.5"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
           <div className="space-y-0.5">
@@ -81,7 +81,7 @@ export function LoginForm() {
         </div>
       ) : null}
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <Label htmlFor="email">Email address</Label>
         <Input
           id="email"
@@ -115,7 +115,7 @@ export function LoginForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full" loading={submitting} loadingText="Signing in…">
+      <Button type="submit" size="lg" className="w-full" loading={submitting} loadingText="Signing in…">
         Sign in
       </Button>
     </form>

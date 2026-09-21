@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-7">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
+        <p className="text-md leading-relaxed text-muted-foreground">
           Sign in to continue to your workspace.
         </p>
       </div>
@@ -23,7 +23,7 @@ export default function LoginPage() {
         <LoginForm />
       </Suspense>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         New to InsightFlow?{" "}
         <Link
           href="/signup"

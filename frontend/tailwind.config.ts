@@ -175,6 +175,10 @@ const config: Config = {
         e3: "0 4px 8px -3px hsl(var(--shadow-color) / 0.10), 0 16px 36px -8px hsl(var(--shadow-color) / 0.12)",
         overlay:
           "0 8px 16px -6px hsl(var(--shadow-color) / 0.14), 0 28px 60px -16px hsl(var(--shadow-color) / 0.22)",
+        // Named for what it is on, so popovers, menus, dialogs and toasts
+        // cannot drift onto three different elevations.
+        popover:
+          "0 8px 16px -6px hsl(var(--shadow-color) / 0.14), 0 28px 60px -16px hsl(var(--shadow-color) / 0.22)",
         // The product shot on the marketing page, which needs to read as a
         // physical object sitting above the page.
         showcase:
