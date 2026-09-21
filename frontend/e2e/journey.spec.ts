@@ -35,6 +35,17 @@ async function signUp(page: Page): Promise<string> {
   return email;
 }
 
+/**
+ * The sidebar, scoped.
+ *
+ * `getByRole("link", { name: "Insights" })` matches by substring, so once the
+ * dashboard grew an "All insights" link it matched two elements and strict
+ * mode failed the click. These tests mean the navigation item, so they say so.
+ */
+function nav(page: Page) {
+  return page.getByRole("navigation", { name: "Main" });
+}
+
 async function loadSampleAndAnalyse(page: Page) {
   await page.getByRole("button", { name: /Continue/i }).click();
   await expect(page.getByRole("heading", { name: "Add your data" })).toBeVisible();
@@ -195,7 +206,7 @@ test.describe("full journey", () => {
     ).toBeVisible();
 
     // --- insights and evidence ------------------------------------------
-    await page.getByRole("link", { name: "Insights" }).click();
+    await nav(page).getByRole("link", { name: "Insights", exact: true }).click();
     await page.waitForURL("**/insights");
     await expect(page.getByRole("heading", { name: "Insights", level: 1 })).toBeVisible();
 
@@ -208,7 +219,7 @@ test.describe("full journey", () => {
     await expect(dialog).not.toBeVisible();
 
     // --- anomalies and investigation ------------------------------------
-    await page.getByRole("link", { name: "Anomalies" }).click();
+    await nav(page).getByRole("link", { name: "Anomalies", exact: true }).click();
     await page.waitForURL("**/anomalies");
     await expect(page.getByRole("heading", { name: "Anomalies", level: 1 })).toBeVisible();
 
@@ -223,7 +234,7 @@ test.describe("full journey", () => {
     }
 
     // --- ask --------------------------------------------------------------
-    await page.getByRole("link", { name: "Ask InsightFlow" }).click();
+    await nav(page).getByRole("link", { name: "Ask InsightFlow", exact: true }).click();
     await page.waitForURL("**/ask");
     await page.getByLabel("Your question").fill("Why did revenue decline?");
     await page.getByRole("button", { name: "Ask" }).click();
@@ -235,7 +246,7 @@ test.describe("full journey", () => {
     await expect(page.getByRole("button", { name: /View evidence/i }).first()).toBeVisible();
 
     // --- report -----------------------------------------------------------
-    await page.getByRole("link", { name: "Reports" }).click();
+    await nav(page).getByRole("link", { name: "Reports", exact: true }).click();
     await page.waitForURL("**/reports");
     await page.getByRole("button", { name: /Generate/i }).first().click();
 
@@ -297,7 +308,9 @@ test.describe("responsive layout", () => {
     await page.goto("/overview");
 
     await page.getByRole("button", { name: /Open navigation/i }).click();
-    await expect(page.getByRole("link", { name: "Datasets" })).toBeVisible();
+    await expect(
+      nav(page).getByRole("link", { name: "Datasets", exact: true }),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name: "Navigation" })).not.toBeVisible();
 

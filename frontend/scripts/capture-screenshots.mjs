@@ -34,12 +34,38 @@ const ANALYSIS_TIMEOUT = 300_000;
 /** Two model calls on a CPU. Measured at ~250s; this leaves headroom. */
 const MODEL_TIMEOUT = 600_000;
 
+/**
+ * Full-page capture repaints fixed and sticky elements wherever the viewport
+ * happened to be, so the sidebar and top bar land in the middle of a long
+ * screenshot looking like a rendering fault. Unpinning them for the duration
+ * of the capture is a screenshot concern, not a product one — nothing here
+ * changes what a user sees.
+ */
+const UNPIN = `
+  .capture-unpin [class*="fixed"], .capture-unpin aside { position: absolute !important; }
+  .capture-unpin header[class*="sticky"], .capture-unpin [class*="sticky"] { position: static !important; }
+`;
+
 async function shoot(page, name, { fullPage = false } = {}) {
   // Let fonts settle and chart entry animations finish, or captures taken
   // moments apart differ for no reason anyone cares about.
   await page.waitForLoadState("networkidle").catch(() => {});
   await page.waitForTimeout(1200);
+
+  if (fullPage) {
+    await page.addStyleTag({ content: UNPIN }).catch(() => {});
+    await page.evaluate(() => document.documentElement.classList.add("capture-unpin"));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(350);
+  }
+
   await page.screenshot({ path: join(OUT, `${name}.png`), fullPage });
+
+  if (fullPage) {
+    await page
+      .evaluate(() => document.documentElement.classList.remove("capture-unpin"))
+      .catch(() => {});
+  }
   console.log(`  ${name}.png`);
 }
 
