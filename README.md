@@ -105,36 +105,51 @@ figures.
 Real captures from the running application with the included sample dataset.
 Every figure in them is one the product produced — nothing here is a mockup.
 
+### The landing page
+
+What it is, who it is for, and the argument that separates it from a chatbot
+with a spreadsheet attached.
+
+![Landing page: the claim, the product shot, and the trust argument](docs/screenshots/landing.png)
+
 ### The dashboard
 
-How the business is doing, what changed, and what deserves attention.
+A greeting, the four figures that matter with their shape behind them, the
+trend, then **what changed** and **what needs attention** — kept separate,
+because a movement and an anomaly are different questions.
 
-![Overview: KPI row, revenue trend, ranked insights](docs/screenshots/overview.png)
+![Overview: KPIs with sparklines, the revenue trend, ranked findings](docs/screenshots/overview.png)
 
 ### Ask InsightFlow
 
-A business question, answered from computed evidence, with the explanation
-hedged exactly as far as the data supports and specific next checks.
+A business question, answered from computed evidence. The conclusion, the
+figures behind it, and — visually set apart, because the distinction is the
+product — what might explain it, with follow-ups this dataset can answer.
 
 ![Ask InsightFlow: an evidence-backed answer](docs/screenshots/ask.png)
 
 ### Investigation
 
-What happened, where it happened, what coincided with it, and — set visually
-apart, because the distinction matters — what might explain it.
+What happened, where it happened, what coincided with it, and what might
+explain it.
 
 ![Investigation: findings, evidence, and hedged explanations](docs/screenshots/investigation.png)
 
 <details>
-<summary>More: landing page, datasets, detected fields, insights, report</summary>
+<summary>More: sign in, upload, insights, anomalies, report, settings, dark theme, mobile</summary>
 
 | | |
 | --- | --- |
-| [Landing page](docs/screenshots/landing.png) | The product's claim, and the example answer behind it |
-| [Datasets](docs/screenshots/datasets.png) | What has been uploaded, and what has been analysed |
-| [Detected fields](docs/screenshots/fields.png) | What we inferred each column means, and what the analysis can support — editable before anything runs |
-| [Insights](docs/screenshots/insights.png) | Ranked findings, each with its evidence |
+| [Sign in](docs/screenshots/login.png) | The front door, with the evidence proposition beside it |
+| [Upload](docs/screenshots/upload.png) | Step one of the guided flow, and what we look for in a file |
+| [Insights](docs/screenshots/insights.png) | Findings banded by severity, top one given prominence |
+| [Anomalies](docs/screenshots/anomalies.png) | Deviation bars, so which is furthest out is visible at a glance |
+| [Detected fields](docs/screenshots/fields.png) | What each column was inferred to mean — editable before anything runs |
 | [Report](docs/screenshots/report.png) | The printable business performance report |
+| [Settings](docs/screenshots/settings.png) | The active AI provider, and exactly what is sent to it |
+| [Dark theme](docs/screenshots/overview-dark.png) | Tuned separately, not derived by inversion |
+| [Mobile dashboard](docs/screenshots/mobile-overview.png) | Laid out for a phone rather than compressed |
+| [Mobile Ask](docs/screenshots/mobile-ask.png) | The signature screen at 390px |
 
 </details>
 
@@ -345,7 +360,8 @@ frontend/
 docs/            ARCHITECTURE.md · DEPLOYMENT.md · SECURITY.md
                  AI_GUARDRAILS.md · TESTING.md · DEVELOPMENT.md
                  ENVIRONMENT.md · DEMO.md · PRODUCTION_AUDIT.md
-                 FINAL_LAUNCH_REPORT.md · screenshots/
+                 FINAL_LAUNCH_REPORT.md · DESIGN_SYSTEM.md
+                 UI_UX_AUDIT.md · screenshots/
 ```
 
 ---
@@ -381,6 +397,8 @@ should find in it.
 | [DEMO.md](docs/DEMO.md) | The sample dataset and the demo modes |
 | [PRODUCTION_AUDIT.md](docs/PRODUCTION_AUDIT.md) | What was wrong before the productionisation pass |
 | [FINAL_LAUNCH_REPORT.md](docs/FINAL_LAUNCH_REPORT.md) | Where it stands now, including what is not built |
+| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | The tokens, components and rules the interface is built from |
+| [UI_UX_AUDIT.md](docs/UI_UX_AUDIT.md) | What was wrong with the interface before the redesign |
 
 ---
 
