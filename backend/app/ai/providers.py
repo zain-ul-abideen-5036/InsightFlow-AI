@@ -110,8 +110,9 @@ class OllamaProvider(AIProvider):
         if json_mode:
             payload["format"] = "json"
 
+        timeout = self.call_timeout()
         try:
-            with httpx.Client(timeout=settings.ai_timeout_seconds) as client:
+            with httpx.Client(timeout=timeout) as client:
                 response = client.post(f"{self._base_url}/api/chat", json=payload)
                 response.raise_for_status()
                 data = response.json()
@@ -122,7 +123,7 @@ class OllamaProvider(AIProvider):
             ) from exc
         except httpx.ReadTimeout as exc:
             raise AIProviderError(
-                f"The AI model took longer than {settings.ai_timeout_seconds} seconds to respond.",
+                f"The AI model took longer than {timeout:.0f} seconds to respond.",
                 hint="Try a smaller model, or raise AI_TIMEOUT_SECONDS.",
             ) from exc
         except httpx.HTTPStatusError as exc:
@@ -227,8 +228,9 @@ class OpenAICompatibleProvider(AIProvider):
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
 
+        timeout = self.call_timeout()
         try:
-            with httpx.Client(timeout=settings.ai_timeout_seconds) as client:
+            with httpx.Client(timeout=timeout) as client:
                 response = client.post(
                     f"{self._base_url}/chat/completions",
                     headers=self._headers(),
@@ -238,7 +240,7 @@ class OpenAICompatibleProvider(AIProvider):
                 data = response.json()
         except httpx.ReadTimeout as exc:
             raise AIProviderError(
-                f"The AI provider took longer than {settings.ai_timeout_seconds} seconds to respond."
+                f"The AI provider took longer than {timeout:.0f} seconds to respond."
             ) from exc
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code if exc.response is not None else 0

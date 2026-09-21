@@ -92,8 +92,9 @@ both halves. See [SECURITY.md §4](SECURITY.md#4-identifying-the-caller).
 | --- | --- | --- |
 | `AI_PROVIDER` | `ollama` | `ollama`, `openai`, or `none` |
 | `AI_ENABLED` | `true` | `false` disables written explanations entirely. The product remains fully functional |
-| `AI_TIMEOUT_SECONDS` | `120` | Per-call ceiling. See the note below before raising it |
+| `AI_TIMEOUT_SECONDS` | `120` | Per-call ceiling |
 | `AI_MAX_RETRIES` | `1` | Retries on a transport failure |
+| `AI_REQUEST_BUDGET_SECONDS` | `240` | Ceiling for a whole request. See the note below before raising it |
 | `AI_MAX_SAMPLE_ROWS` | `25` | Hard ceiling on raw rows that may ever be sent. Nothing currently sends any |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Local Ollama endpoint |
 | `OLLAMA_MODEL` | `qwen2.5:3b-instruct` | Model name |
@@ -101,18 +102,23 @@ both halves. See [SECURITY.md §4](SECURITY.md#4-identifying-the-caller).
 
 > **The AI budget has a hard ceiling of 300 seconds.**
 >
-> One call costs at most `(AI_MAX_RETRIES + 1) * AI_TIMEOUT_SECONDS`. The whole
-> request has to finish inside 300 seconds, because that is when Node stops
-> waiting for response headers, and a Next.js route handler cannot raise it.
+> A request has to finish inside 300 seconds. That is when Node stops waiting
+> for response headers, and a Next.js route handler cannot raise it. Go over it
+> and the browser is told *"we could not reach the analysis service"* for a
+> backend that is working perfectly — and the answer it was about to return is
+> thrown away.
 >
-> Go over it and the browser is told *"we could not reach the analysis
-> service"* for a backend that is working perfectly — and the answer it was
-> about to return is thrown away. The defaults give `2 * 120 = 240s`, leaving
-> headroom. Raise `AI_TIMEOUT_SECONDS` and lower `AI_MAX_RETRIES` together, or
-> the product will start misreporting slow answers as outages.
+> `AI_TIMEOUT_SECONDS` cannot enforce this on its own. One logical call is up
+> to four round trips: the first attempt, one retry, then the same again to
+> repair malformed JSON. That was measured at 425 seconds for a single
+> question. `AI_REQUEST_BUDGET_SECONDS` is the bound that actually holds, and
+> it covers retries and repair together.
 >
-> Under the ceiling, a slow model is handled properly: the backend times out
-> first and returns its deterministic answer, marked as a fallback.
+> So: raise `AI_REQUEST_BUDGET_SECONDS` only while it stays clearly under 300,
+> and keep `AI_TIMEOUT_SECONDS` at or below it. A test asserts both.
+>
+> Under the ceiling a slow model is handled properly: the AI layer runs out of
+> time first and the deterministic answer is returned, marked as a fallback.
 | `OPENAI_API_KEY` | *(empty)* | **Required when `AI_PROVIDER=openai`** |
 | `OPENAI_MODEL` | `gpt-4o-mini` | Model name |
 

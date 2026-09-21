@@ -68,6 +68,7 @@ CORS from production entirely.
 | **Timestamps lost their timezone** | SQLite returns naive datetimes, which serialise without a `Z`, which a browser reads as local time. A new `UTCDateTime` column type re-attaches UTC on the way out. |
 | **Relative times were one unit too large** | Each threshold was paired with the unit named beside it rather than the one below it, so an analysis finished five hours ago read "5 days ago". |
 | **Transactions were held across the model call** | Both endpoints that call a model did so inside an open write transaction lasting 60–180 seconds. On SQLite that starved every other writer into "database is locked". Both now commit first and write their result separately. |
+| **A working answer was reported as an outage** | A question answered in 306 seconds reached the browser as *"we could not reach the analysis service"*. Node stops waiting for response headers at 300 seconds and a route handler cannot raise that, so the proxy gave up six seconds before the backend succeeded — discarding the answer and pointing the reader at a healthy service. The budget was the cause: `(AI_MAX_RETRIES + 1) * AI_TIMEOUT_SECONDS` was 360 seconds, over the ceiling before the first token. The per-call budget is now 120, capping a call at 240 so the AI layer times out first and takes its own tested fallback path. The message is fixed independently: a timeout is named as one, with a 504, because Node hides the real cause behind an opaque "fetch failed". 15 tests pin the classification. |
 
 ### Security
 
@@ -178,7 +179,7 @@ the assertion that would have caught all three earlier.
 | Analysis, 14,261 rows | seconds, off the request thread, progress committed per stage |
 | Demo creation end to end | ~5.5 s measured, including generation, ingestion, profiling, inference |
 | Dataset rows in the browser | none — previews are server-side and bounded |
-| Written explanation, local CPU model | 60–180 s, surfaced honestly rather than hidden |
+| Written explanation, local CPU model | 60–180 s typical, and measured as high as 333 s on a loaded machine. Bounded so the backend times out before the proxy does, and surfaced honestly rather than hidden |
 | Investigation page | evidence immediately; prose arrives separately and is cached |
 | Analysis progress | real backend stages, never an invented percentage |
 

@@ -107,6 +107,11 @@ class Settings(BaseSettings):
     # truth. That is strictly better than the proxy failing first.
     ai_timeout_seconds: int = 120
     ai_max_retries: int = 1
+    # The ceiling for everything one request asks of the model, retries and
+    # JSON repair included. This is the number that has to stay under 300;
+    # `ai_timeout_seconds` alone cannot bound a request, because a single
+    # `complete_json` is up to four calls.
+    ai_request_budget_seconds: int = 240
     ai_max_sample_rows: int = 25
 
     ollama_base_url: str = "http://localhost:11434"

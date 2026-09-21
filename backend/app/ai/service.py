@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.ai.base import AIProvider
+from app.ai.base import AIProvider, request_budget
 from app.ai.guardrails import GuardrailResult, collect_text, validate_response
 from app.ai.prompts import (
     ANSWER_SYSTEM,
@@ -41,6 +41,7 @@ from app.ai.schemas import (
 from app.analytics.executor import ExecutionResult
 from app.analytics.investigation import Investigation
 from app.analytics.types import Evidence
+from app.core.config import settings
 from app.core.errors import AIProviderError
 from app.core.logging import get_logger
 
@@ -100,9 +101,16 @@ def _run(
     active = provider or get_provider()
 
     try:
-        result = active.complete_json(
-            system=system, user=user, schema=schema, max_tokens=max_tokens
-        )
+        # Every AI-touching path in the product reaches the model through here,
+        # so this is the one place the budget has to be applied. It bounds the
+        # retry and the JSON repair as well as the first call — together those
+        # were measured at 425 seconds for a single question, past the 300 the
+        # Node proxy in front of us allows, which reached the user as a false
+        # "we could not reach the analysis service".
+        with request_budget(settings.ai_request_budget_seconds):
+            result = active.complete_json(
+                system=system, user=user, schema=schema, max_tokens=max_tokens
+            )
     except AIProviderError as exc:
         logger.info(
             "ai unavailable, using deterministic output",
