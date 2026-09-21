@@ -325,7 +325,7 @@ segment name would not be caught by them.
 | Frontend is Vercel-ready | **PASS** — production build verified |
 | Backend deployment documented and tested | **PASS** — Dockerfile, exact commands |
 | Production variables documented | **PASS** |
-| Git history meaningful | **PASS** — 34 commits by concern |
+| Git history meaningful | **PASS** — 36 commits, separated by concern |
 | Pushed to GitHub | **PASS** — verified against the remote |
 | Working tree clean | **PASS** |
 | Clean-room setup verified | **PASS** — fresh clone, fresh venv, full suite, build |
