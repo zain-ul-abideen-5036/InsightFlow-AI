@@ -255,16 +255,37 @@ frontend/
 
 ## 9. Deployment topology
 
+The default target is **one Vercel project and one Neon database**. Both halves
+of the application are Vercel *services* declared in `vercel.json`, built
+separately and deployed together. [GO_LIVE.md](GO_LIVE.md) is the walkthrough.
+
 | Component | Target | Notes |
 | --- | --- | --- |
-| Frontend | Vercel | Native Next.js; needs `BACKEND_API_URL` |
-| Backend | Any container host (Render, Fly.io, Railway, a VPS) | Vercel functions cannot host a long-running pandas workload |
-| Database | Managed Postgres (Neon / Supabase / Render) | `DATABASE_URL` |
-| AI | Ollama locally; any OpenAI-compatible endpoint in production | `AI_PROVIDER` |
+| Frontend | Vercel service `web` (Next.js) | The only public entry point |
+| Backend | Vercel service `api` (FastAPI, Python 3.12) | No public address; reached over an internal service binding |
+| Database | Neon PostgreSQL | `DATABASE_URL`, pooled connection string |
+| Uploaded files | The same database, under `STORAGE_BACKEND=database` | Serverless has no durable disk, and `Ask`/`Investigate` re-read the file |
+| AI | Ollama locally; any OpenAI-compatible endpoint in production | `AI_PROVIDER`; optional everywhere |
+
+Running the backend on Vercel took three adjustments, each behind a setting and
+each leaving the product identical from the outside. Serverless platforms give a
+function a filesystem that is private to one instance and erased without notice
+(`STORAGE_BACKEND=database`); they may stop executing an instance the moment it
+has produced a response, so work started behind one may never run
+(`ANALYSIS_EXECUTION=request`); and every cold start is a new process, so
+start-up housekeeping would become a per-request tax (`STARTUP_TASKS_ENABLED`).
+None of them touches the analytics engine, and the test suite asserts the same
+known answers under both configurations.
+
+The backend still runs unchanged as a long-lived container — that is what the
+defaults describe, what `docker-compose.yml` builds, and what a host with a real
+disk and a 50 MB upload ceiling should use. See
+[DEPLOYMENT.md](DEPLOYMENT.md) for the trade-offs.
 
 The frontend never talks to the database. It holds two values that matter:
-`BACKEND_API_URL`, and `PROXY_SHARED_SECRET` — which is not a signing key but the
-credential that lets the backend believe the client address this layer forwards.
+`BACKEND_API_URL` — injected by the service binding on Vercel — and
+`PROXY_SHARED_SECRET`, which is not a signing key but the credential that lets
+the backend believe the client address this layer forwards.
 
 There is deliberately no frontend signing key. The session cookie carries a JWT
 the backend already signed and verifies on every request; a second signature

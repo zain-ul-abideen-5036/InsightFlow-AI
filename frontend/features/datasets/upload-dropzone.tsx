@@ -5,18 +5,24 @@ import { AlertCircle, FileSpreadsheet, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ClientApiError } from "@/lib/api-client";
+import { MAX_UPLOAD_MB } from "@/lib/site";
 import { cn, formatBytes } from "@/lib/utils";
 
 const ACCEPTED = [".csv", ".xlsx", ".xls", ".tsv"];
-const MAX_MB = 50;
 
 /**
  * File picker with drag-and-drop.
  *
- * Validates extension and size in the browser purely so the user hears about an
- * obvious problem immediately rather than after a 50 MB upload. The backend
+ * Validates extension and size in the browser so the user hears about an
+ * obvious problem immediately rather than after a long upload. The backend
  * re-validates everything, including magic bytes, because a browser check is
  * advice, not a control.
+ *
+ * The size check has a second job on a serverless host, where the platform
+ * rejects an oversized body itself, before any of this application's code
+ * runs — with a generic error naming a function rather than a file. Catching
+ * it here is what keeps the explanation in the product's own words. See
+ * MAX_UPLOAD_MB.
  */
 export function UploadDropzone({
   onUpload,
@@ -37,8 +43,8 @@ export function UploadDropzone({
     if (!ACCEPTED.includes(extension)) {
       return `${extension || "That file type"} is not supported. Upload a CSV or Excel file.`;
     }
-    if (file.size > MAX_MB * 1024 * 1024) {
-      return `That file is ${formatBytes(file.size)}, which is over the ${MAX_MB} MB limit.`;
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      return `That file is ${formatBytes(file.size)}, which is over the ${MAX_UPLOAD_MB} MB limit.`;
     }
     if (file.size === 0) {
       return "That file is empty.";
@@ -114,7 +120,7 @@ export function UploadDropzone({
               </button>
             </p>
             <p className="text-sm text-muted-foreground">
-              CSV, TSV, or Excel (.xlsx) — up to {MAX_MB} MB
+              CSV, TSV, or Excel (.xlsx) — up to {MAX_UPLOAD_MB} MB
             </p>
           </div>
         )}

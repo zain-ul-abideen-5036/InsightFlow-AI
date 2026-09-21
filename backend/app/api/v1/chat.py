@@ -13,14 +13,13 @@ from __future__ import annotations
 
 import time
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, Query, Request, status
 from sqlalchemy import func, select
 
 from app.analytics.context import build_context
 from app.analytics.executor import answer_question
-from app.analytics.ingestion import load_frame
+from app.analytics.ingestion import DatasetFileMissingError, read_dataset_frame
 from app.analytics.planner import suggested_questions
 from app.analytics.types import Grain
 from app.api.deps import (
@@ -30,7 +29,6 @@ from app.api.deps import (
     ScopedChatSession,
     record_audit,
 )
-from app.core.config import settings
 from app.core.errors import NotFoundError, ValidationError
 from app.core.logging import get_logger
 from app.db.models import (
@@ -83,18 +81,15 @@ def _resolve_dataset(db: DbSession, workspace, dataset_id: uuid.UUID | None) -> 
     return dataset
 
 
-def _build_context_for(dataset: Dataset, workspace):
-    stored = dataset.normalized_path or dataset.storage_path
-    path = Path(stored)
-    if not path.is_absolute():
-        path = settings.storage_path / path
-    if not path.exists():
+def _build_context_for(dataset: Dataset, workspace, db=None):
+    try:
+        frame = read_dataset_frame(dataset.storage_path, dataset.normalized_path, db=db)
+    except DatasetFileMissingError:
         raise NotFoundError(
             "The file behind this dataset is no longer available.",
             hint="Upload the dataset again.",
-        )
+        ) from None
 
-    frame = load_frame(path)
     role_map = {
         column.name: column.effective_role
         for column in dataset.columns
@@ -167,7 +162,7 @@ def ask(
     db.commit()
 
     # -- Deterministic analysis -------------------------------------------
-    ctx = _build_context_for(dataset, workspace)
+    ctx = _build_context_for(dataset, workspace, db)
     execution = answer_question(payload.question, ctx)
 
     # -- Written answer ----------------------------------------------------
@@ -247,7 +242,7 @@ def get_suggestions(
     """Questions this workspace's data can actually answer."""
     try:
         dataset = _resolve_dataset(db, workspace, dataset_id)
-        ctx = _build_context_for(dataset, workspace)
+        ctx = _build_context_for(dataset, workspace, db)
         return suggested_questions(ctx)
     except (ValidationError, NotFoundError):
         return []

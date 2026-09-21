@@ -29,7 +29,10 @@ Read from `backend/.env`, or from the process environment, which wins.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | *(empty)* | Empty uses a SQLite file at `backend/storage/insightflow.db`. **Required in production.** `postgres://` and `postgresql://` are both accepted and rewritten to the `psycopg` driver that ships |
+| `DATABASE_URL` | *(empty)* | Empty uses a SQLite file at `backend/storage/insightflow.db`. **Required in production.** `postgres://` and `postgresql://` are both accepted and rewritten to the `psycopg` driver that ships. On a serverless host use Neon's **pooled** string (hostname contains `-pooler`) |
+| `DB_POOL_SIZE` | `10` | Connections held per process. Use `5` on serverless: every warm instance keeps its own pool and they multiply as the platform adds instances. Pair it with Neon's pooled endpoint, which exists to absorb exactly that |
+| `DB_MAX_OVERFLOW` | `20` | Additional connections above the pool size. Use `5` on serverless |
+| `AUTO_CREATE_TABLES` | `true`, and `false` when `ENVIRONMENT=production` | Creates missing tables from the models at start-up. A convenience for development; Alembic owns the schema in production, where creating tables from the models would hide a migration that was never written |
 
 ### Security
 
@@ -72,19 +75,35 @@ both halves. See [SECURITY.md §4](SECURITY.md#4-identifying-the-caller).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `STORAGE_DIR` | `./storage` | Where uploads and the SQLite file live. **Must be a persistent volume in production** |
-| `MAX_UPLOAD_SIZE_MB` | `50` | Largest accepted file. Raise your reverse proxy's limit to match |
+| `STORAGE_BACKEND` | `local` | `local` keeps uploads on disk; `database` keeps them as rows in PostgreSQL. Use `database` on any host whose filesystem is private to one instance or erased without notice — every serverless platform. See the note below |
+| `STORAGE_DIR` | `./storage` | Where uploads and the SQLite file live, under `STORAGE_BACKEND=local`. **Must be a persistent volume in production** |
+| `MAX_UPLOAD_SIZE_MB` | `50` | Largest accepted file. Raise your reverse proxy's limit to match. **Use `4` on Vercel**, which rejects request bodies over 4.5 MB itself |
 | `ALLOWED_UPLOAD_EXTENSIONS` | `.csv,.xlsx,.xls,.tsv` | Extension allowlist, checked alongside magic bytes |
 | `PROFILE_SAMPLE_ROWS` | `50000` | Rows scanned for type inference. `0` scans everything |
-| `MAX_ANALYSIS_ROWS` | `500000` | Ceiling on rows analysed; larger files are down-sampled with a stated notice |
+| `MAX_ANALYSIS_ROWS` | `500000` | Ceiling on rows analysed; larger files are down-sampled with a stated notice. Lower it where one analysis must fit inside a function timeout |
+
+**Why `STORAGE_BACKEND=database` exists.** InsightFlow re-reads the original
+file long after the upload: `Ask` executes a query plan against the rows, and
+`Investigate` slices the dataset to explain an anomaly. That makes the file
+durable state, not a temporary input. With `local` on a host that has no durable
+disk, a dataset stays listed and visible while those two features report that
+its file is gone. The cost of `database` is that uploads consume the same
+database quota as the analysis results — bounded by `MAX_UPLOAD_SIZE_MB`.
 
 ### Analysis jobs
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ANALYSIS_WORKERS` | `2` | Concurrent analyses in the in-process pool |
+| `ANALYSIS_EXECUTION` | `thread` | `thread` runs analyses on an in-process pool behind the response. `request` runs them inside an explicit `POST /analyses/{id}/run`, which is required on platforms that may freeze an instance once it has replied. Identical from the user's point of view |
+| `ANALYSIS_WORKERS` | `2` | Concurrent analyses in the in-process pool. Ignored under `ANALYSIS_EXECUTION=request` |
 | `ANALYSIS_TIMEOUT_SECONDS` | `600` | Per-analysis ceiling |
-| `ANALYSIS_STALE_MINUTES` | `30` | A job still `running` after this is treated as orphaned at next start-up |
+| `ANALYSIS_STALE_MINUTES` | `30` | A job still `running` after this is treated as orphaned — at next start-up, and whenever its status is polled |
+
+### Start-up
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `STARTUP_TASKS_ENABLED` | `true` | Runs the start-up housekeeping: reconcile interrupted analyses, purge expired demo workspaces, warm a local model. Set `false` where every cold start is a new process. Each task has another trigger, so nothing is lost but the head start |
 
 ### AI
 
@@ -137,12 +156,13 @@ Read from `frontend/.env.local`, or from the process environment.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `BACKEND_API_URL` | `http://localhost:8000` | Where the Next.js **server** reaches the API |
+| `BACKEND_API_URL` | `http://localhost:8000` | Where the Next.js **server** reaches the API. On Vercel it is injected by the service binding declared in `vercel.json` — do not set it by hand there |
 | `PROXY_SHARED_SECRET` | *(empty)* | Must match the backend's |
 | `COOKIE_SECURE` | *(derived)* | Forces the `Secure` cookie flag. Leave unset unless your proxy does not set `x-forwarded-proto` |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | Canonical public origin, used for metadata, sitemap, and social previews |
 | `NEXT_PUBLIC_DEMO_ENABLED` | `true` | Shows the "Use sample data" affordance in onboarding |
 | `NEXT_PUBLIC_SOURCE_URL` | the upstream repository | Footer "Source code" link |
+| `NEXT_PUBLIC_MAX_UPLOAD_MB` | `50` | The limit the upload form shows and enforces before sending. **Set `4` on Vercel**, which rejects request bodies over 4.5 MB with its own error before this application runs. Keep it at or below the backend's `MAX_UPLOAD_SIZE_MB` |
 
 ### Why `BACKEND_API_URL` is not `NEXT_PUBLIC_`
 
@@ -151,6 +171,21 @@ Deliberate. The browser never contacts the backend. Every request goes to
 session cookie first-party, keeps tokens out of JavaScript's reach, and removes
 CORS from the deployment entirely. A `NEXT_PUBLIC_` variable would be inlined
 into the client bundle and would defeat all three.
+
+### Why `BACKEND_API_URL` must not be set on Vercel
+
+`vercel.json` declares a service binding from the `web` service to the `api`
+service, and Vercel generates the value. It is deployment-aware: a preview
+deployment's frontend reaches that same preview's backend. A hand-typed value
+would be a fixed hostname, so every preview would talk to production.
+
+### Which variables may be `NEXT_PUBLIC_`
+
+Only two are, and neither is a secret: a public URL, and a file-size limit the
+upload form already reveals by rejecting anything larger. Anything prefixed
+`NEXT_PUBLIC_` is compiled into the JavaScript every visitor downloads, so
+`DATABASE_URL`, `SECRET_KEY`, `PROXY_SHARED_SECRET` and `OPENAI_API_KEY` must
+never carry it.
 
 ### `NEXT_PUBLIC_` variables are baked in at build time
 
@@ -179,9 +214,53 @@ cp frontend/.env.example frontend/.env.local
 
 SQLite, no AI required, demo enabled.
 
-### Production, no model
+### Vercel, no model
+
+One Vercel project, one Neon database. This is what [GO_LIVE.md](GO_LIVE.md)
+walks through, and every variable goes in the same place — the project's
+environment settings — because both services share it.
+
+```bash
+ENVIRONMENT=production
+SECRET_KEY=<48 random characters>
+DATABASE_URL=postgresql://...-pooler.../neondb?sslmode=require
+PROXY_SHARED_SECRET=<32 random characters>
+
+# Serverless: no durable disk, and no work runs behind a response.
+STORAGE_BACKEND=database
+ANALYSIS_EXECUTION=request
+STARTUP_TASKS_ENABLED=false
+
+# A Vercel Function rejects request bodies over 4.5 MB itself.
+MAX_UPLOAD_SIZE_MB=4
+NEXT_PUBLIC_MAX_UPLOAD_MB=4
+
+# One analysis must fit inside the 300s function timeout.
+MAX_ANALYSIS_ROWS=150000
+
+# Many instances, each with its own pool, against a free-tier database.
+DB_POOL_SIZE=5
+DB_MAX_OVERFLOW=5
+
+# The browser never calls the API directly; it has no public address.
+CORS_ORIGINS=
+TRUSTED_PROXY_COUNT=0
+LOG_JSON=true
+
+AI_ENABLED=false
+AI_PROVIDER=none
+
+NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
+```
+
+`BACKEND_API_URL` is deliberately absent: Vercel injects it from the service
+binding in `vercel.json`.
+
+### A server you run yourself, no model
 
 The product is fully functional this way, and the whole test suite runs in it.
+Note what is *not* here: with a real disk and a process that stays running, the
+three serverless settings above are all left at their defaults.
 
 ```bash
 # Backend
@@ -189,7 +268,7 @@ ENVIRONMENT=production
 SECRET_KEY=<48 random characters>
 DATABASE_URL=postgresql+psycopg://user:pass@host:5432/insightflow
 STORAGE_DIR=/app/storage
-CORS_ORIGINS=https://your-app.vercel.app
+CORS_ORIGINS=https://your-app.example.com
 PROXY_SHARED_SECRET=<32 random characters>
 LOG_JSON=true
 AI_ENABLED=false
@@ -197,7 +276,7 @@ AI_PROVIDER=none
 
 # Frontend
 BACKEND_API_URL=https://your-api-host.com
-NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
+NEXT_PUBLIC_SITE_URL=https://your-app.example.com
 PROXY_SHARED_SECRET=<the same 32 characters>
 ```
 
@@ -268,6 +347,11 @@ wrong thing.
 | --- | --- | --- |
 | Local | `backend/.env` | `frontend/.env.local` |
 | Docker Compose | `docker-compose.yml` `environment:` | run with `npm run dev` |
-| Render / Fly / Railway | the service's environment settings | — |
-| Vercel | — | Project → Settings → Environment Variables |
+| **Vercel** | Project → Settings → Environment Variables | the same place |
+| A server you run yourself | the service's environment settings | the same |
 | CI | `.github/workflows/ci.yml` `env:` | same |
+
+On Vercel both halves are services in one project, so there is one list of
+environment variables and each service reads what it needs from it. There is no
+second dashboard to keep in sync — which is also why `PROXY_SHARED_SECRET`
+cannot drift between them.

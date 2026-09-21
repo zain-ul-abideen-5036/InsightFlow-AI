@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 
 from app.analytics.anomalies import AnomalyPoint
 from app.analytics.context import build_context
-from app.analytics.ingestion import load_frame
+from app.analytics.ingestion import DatasetFileMissingError, read_dataset_frame
 from app.analytics.investigation import Investigation, investigate_anomaly
 from app.analytics.types import Grain
 from app.api.deps import CurrentWorkspace, DbSession
@@ -234,12 +234,6 @@ def investigate(
     investigation_obj = None
 
     if investigation_dict is None:
-        from pathlib import Path
-
-        stored = dataset.normalized_path or dataset.storage_path
-        path = Path(stored)
-        if not path.is_absolute():
-            path = settings.storage_path / path
         # An investigation is computed from the file, not from the stored
         # anomaly, so a file that is gone has to be said out loud. Without this
         # the read below raises FileNotFoundError and the user is told
@@ -248,13 +242,14 @@ def investigate(
         # happens whenever storage is not persistent — a container restart on a
         # host with an ephemeral filesystem is enough. `Ask` already answers
         # this way (see chat.py); this path was the one that did not.
-        if not path.exists():
+        try:
+            frame = read_dataset_frame(dataset.storage_path, dataset.normalized_path, db=db)
+        except DatasetFileMissingError:
             raise NotFoundError(
                 "The file behind this dataset is no longer available.",
                 hint="Upload the dataset again to investigate this anomaly.",
-            )
+            ) from None
 
-        frame = load_frame(path)
         role_map = {
             column.name: column.effective_role
             for column in dataset.columns

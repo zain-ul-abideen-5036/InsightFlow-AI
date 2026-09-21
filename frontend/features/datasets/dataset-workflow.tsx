@@ -77,6 +77,27 @@ export function DatasetWorkflow({
     enabled: Boolean(dataset?.id) && step === "review",
   });
 
+  /**
+   * Ask the backend to run the analysis, then stop caring about the answer.
+   *
+   * Not a mutation, and deliberately not awaited: the progress card below is
+   * already polling, and it is the thing that tells the user what is
+   * happening. This request only has to be *sent*, because on a deployment
+   * that cannot run work behind a response it is the request that does the
+   * work. Its eventual resolution carries nothing the poll will not report a
+   * moment later, and a genuine failure surfaces there as a failed analysis
+   * with the backend's own explanation — which is better than a toast phrased
+   * without one.
+   */
+  const runAnalysis = React.useCallback(
+    (id: string) => {
+      void api.runAnalysis(workspaceId, id).catch(() => {
+        // Reported by the poll, which knows why.
+      });
+    },
+    [workspaceId],
+  );
+
   const confirm = useMutation({
     mutationFn: ({ columns, grain }: { columns: FieldSelection[]; grain: Grain | null }) =>
       api.confirmSchema(workspaceId, dataset!.id, {
@@ -88,6 +109,7 @@ export function DatasetWorkflow({
       if (result.analysis) {
         setAnalysisId(result.analysis.id);
         setStep("analysing");
+        runAnalysis(result.analysis.id);
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets(workspaceId) });
     },

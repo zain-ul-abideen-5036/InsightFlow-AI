@@ -41,6 +41,19 @@ export function DatasetDetailView({
     enabled: tab === "fields",
   });
 
+  /**
+   * Ask the backend to run a queued analysis. See `api.runAnalysis` for why
+   * every deployment gets this call and why calling it twice is harmless.
+   */
+  const runAnalysis = React.useCallback(
+    (id: string) => {
+      void api.runAnalysis(workspaceId, id).catch(() => {
+        // Reported by the progress poll, which knows why.
+      });
+    },
+    [workspaceId],
+  );
+
   const confirm = useMutation({
     mutationFn: ({ columns, grain }: { columns: FieldSelection[]; grain: Grain | null }) =>
       api.confirmSchema(workspaceId, dataset.id, { columns, grain, start_analysis: true }),
@@ -48,6 +61,7 @@ export function DatasetDetailView({
       if (result.analysis) {
         setAnalysisId(result.analysis.id);
         setTab("analysis");
+        runAnalysis(result.analysis.id);
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets(workspaceId) });
     },
@@ -61,6 +75,7 @@ export function DatasetDetailView({
     onSuccess: (analysis) => {
       setAnalysisId(analysis.id);
       setTab("analysis");
+      runAnalysis(analysis.id);
     },
     onError: (error: ClientApiError) => {
       // A 409 means one is already running — point at it rather than erroring.

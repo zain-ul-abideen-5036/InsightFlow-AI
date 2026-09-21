@@ -28,72 +28,85 @@ and you will have InsightFlow AI running locally, then deployed.
 
 The single most confusing thing about this architecture, stated once, plainly.
 
-**InsightFlow deploys as two halves.** They are separate because they have
-genuinely different runtime requirements, not because of a preference.
+**InsightFlow is two applications: a Next.js frontend and a FastAPI backend.**
+They are separate because they have genuinely different runtime requirements —
+one renders pages, the other runs a pandas analytics engine — not because they
+must live on different hosts.
+
+The default deployment puts both on **one Vercel project**, as two Vercel
+*services*, with **one Neon database** behind them. [GO_LIVE.md](GO_LIVE.md) is
+the step-by-step walkthrough; this section explains the shape.
 
 ```
                      ┌──────────────────────────────────────┐
-   browser  ────────▶│  VERCEL                              │
-   (only ever        │  Next.js 15 — pages, session cookie, │
-    talks here)      │  authenticating reverse proxy        │
-                     └───────────────┬──────────────────────┘
-                                     │  HTTPS · Bearer token
-                                     │  + X-Real-Client-IP
-                                     ▼
-                     ┌──────────────────────────────────────┐
-                     │  A CONTAINER HOST (Render, Fly,      │
-                     │  Railway, a VPS)                     │
-                     │  FastAPI — pandas analytics engine,  │
-                     │  background analysis jobs,           │
-                     │  uploaded-file storage               │
+   browser  ────────▶│  VERCEL — one project                │
+   (only ever        │                                      │
+    talks here)      │  service "web": Next.js 15           │
+                     │    pages, session cookie, and        │
+                     │    /api/backend/[...path] — an       │
+                     │    authenticating reverse proxy      │
+                     │              │                       │
+                     │              │ service binding       │
+                     │              │ (internal only)       │
+                     │              ▼                       │
+                     │  service "api": FastAPI, Python 3.12 │
+                     │    deterministic analytics engine,   │
+                     │    question planner and executor.    │
+                     │    No public address of its own.     │
                      └──────┬─────────────────┬─────────────┘
                             │                 │
                             ▼                 ▼
                    ┌────────────────┐  ┌──────────────────┐
-                   │  PostgreSQL    │  │  AI provider     │
-                   │  (Neon,        │  │  (optional:      │
-                   │   Supabase,    │  │   OpenAI-compat  │
-                   │   Render)      │  │   or none)       │
+                   │  Neon          │  │  AI provider     │
+                   │  PostgreSQL    │  │  (optional:      │
+                   │  rows AND      │  │   OpenAI-compat  │
+                   │  uploaded files│  │   or none)       │
                    └────────────────┘  └──────────────────┘
 ```
 
-### On Vercel
+### What running the backend on Vercel required
 
-The entire Next.js application: the landing page, the authentication screens,
-the product UI, the session-cookie route handlers, and `/api/backend/[...path]`,
-which forwards browser requests to the API with a bearer token attached
-server-side.
+Serverless is a real constraint, and this project's earlier documentation said
+the backend could not run there at all. Three specific problems stood behind
+that claim. Each turned out to be addressable with a setting rather than a
+rewrite, and the analytics engine was not touched.
 
-This is a completely standard Next.js deployment. Nothing about it is unusual
-and nothing needs special configuration.
+| Constraint | What breaks | The setting |
+| --- | --- | --- |
+| The filesystem is private to one instance and erased without notice | `Ask` and `Investigate` re-read the original upload, possibly weeks later, so a dataset stays listed while its file is gone | `STORAGE_BACKEND=database` — files become rows next to the analysis computed from them |
+| An instance may stop executing the moment it has replied | The thread pool started an analysis behind the response that might never be scheduled, leaving the row `queued` forever with no error | `ANALYSIS_EXECUTION=request` — the browser asks for the run explicitly and polls it exactly as before |
+| Every cold start is a new process | Start-up housekeeping became a tax on unpredictable requests | `STARTUP_TASKS_ENABLED=false` — each task keeps a second trigger, so nothing is lost but the head start |
 
-### Not on Vercel
+What is genuinely given up is upload size: a Vercel Function accepts at most
+4.5 MB of request body, so `MAX_UPLOAD_SIZE_MB` is `4` there against `50` on a
+server you run yourself. That is the one capability limit, and
+[GO_LIVE.md §8](GO_LIVE.md#8-where-uploaded-files-live) states it plainly.
 
-The FastAPI service, and this is deliberate. **Do not try to host it as Vercel
-functions.** Three reasons, each sufficient on its own:
+What is *gained* is that uploaded files persist at all. The previous free-tier
+target offered no disk at any price, so files were wiped on every restart.
 
-1. **Analysis is a multi-second pandas workload** on a background thread pool
-   that reports progress as it goes. Serverless functions are request-scoped;
-   the function returns and the work dies with it.
-2. **Uploaded files are written to a persistent volume** and read again by later
-   analyses. Serverless filesystems are ephemeral.
-3. **The job runner keeps state in-process.** It is restarted deliberately; see
-   [ARCHITECTURE.md](ARCHITECTURE.md) for why that is the right trade at this
-   scale.
+### When not to use Vercel
 
-The backend therefore runs as a long-lived container. `backend/Dockerfile` is
-production-ready: multi-stage, non-root, with a health check, and it applies
-migrations on start-up.
+Run the backend as a container instead if you need uploads larger than 4 MB, or
+an analysis that runs longer than the 300-second function ceiling.
+`backend/Dockerfile` is production-ready — multi-stage, non-root, health-checked,
+and it applies migrations on start-up — and `docker-compose.yml` brings up the
+whole stack locally. With a real disk and a long-lived process, every setting in
+the table above stays at its default. Section 12 covers this.
 
-### How the two connect
+### How the two services connect
 
 | | |
 | --- | --- |
-| Direction | Vercel → backend only. The browser never contacts the backend |
-| Transport | HTTPS, `Authorization: Bearer <token>` attached by the Next.js proxy |
-| Config | `BACKEND_API_URL` on Vercel points at the backend's public URL |
+| Direction | web → api only. The browser never contacts the api service |
+| Reachability | The api service has no public route. Vercel grants the web service internal access through a *binding* declared in `vercel.json` |
+| Transport | `Authorization: Bearer <token>`, attached by the Next.js proxy server-side |
+| Config | `BACKEND_API_URL` — generated by Vercel from the binding, never set by hand. It is deployment-aware, so a preview's frontend reaches that preview's backend |
 | CORS | **None needed.** The browser only ever talks to its own origin |
-| Client identity | Vercel forwards the real visitor address in `X-Real-Client-IP`, authenticated with `PROXY_SHARED_SECRET`, so the backend can rate-limit per visitor rather than per server |
+| Client identity | The proxy forwards the real visitor address in `X-Real-Client-IP`, authenticated with `PROXY_SHARED_SECRET`, so the backend rate-limits per visitor rather than per server |
+
+A binding grants reachability, not authorisation. Every request still carries a
+bearer token the backend verifies, exactly as it would over the public internet.
 
 ### Why the session works this way
 
@@ -105,17 +118,14 @@ there is no CORS to configure in production.
 
 ### Deploy order
 
-1. Database first — you need its connection string.
-2. Backend second — you need its URL.
-3. Frontend last, pointed at the backend.
-4. Then set `CORS_ORIGINS` on the backend to the Vercel URL (belt and braces;
-   the browser does not use it) and confirm `PROXY_SHARED_SECRET` matches on
-   both halves.
+On Vercel there are only two steps, because both services deploy together:
 
-Sections [11](#11-deploying-the-frontend-to-vercel) and
-[12](#12-deploying-the-backend) explain each half;
-[section 14](#14-the-whole-deploy-in-order) is the same sequence as a single
-walkthrough, with the free-tier services named.
+1. **Neon first** — you need its connection string.
+2. **Vercel second** — import the repository, paste the variables, deploy.
+   Migrations run as part of the build.
+
+[Section 14](#14-the-whole-deploy-in-order) is that sequence in full, and
+[GO_LIVE.md](GO_LIVE.md) is the same thing written for a first-timer.
 
 ---
 
@@ -162,7 +172,7 @@ python -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
 
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env
 ```
 
@@ -200,8 +210,9 @@ DATABASE_URL=postgresql+psycopg://insightflow:insightflow@localhost:5432/insight
 
 ### Option B — a managed provider
 
-[Neon](https://neon.tech), [Supabase](https://supabase.com), and Render all have
-free tiers. Copy the connection string they give you into `DATABASE_URL`.
+[Neon](https://neon.com) and [Supabase](https://supabase.com) both have free
+tiers. Copy the connection string they give you into `DATABASE_URL`. Neon is
+what the default deployment uses — see [GO_LIVE.md](GO_LIVE.md).
 
 Both `postgres://` and `postgresql://` prefixes are accepted — the application
 rewrites them to the `psycopg` driver it ships.
@@ -451,13 +462,16 @@ It exits non-zero on any failure, so it can gate a deploy.
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.txt          # runtime only; no test runner
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
 **Use one worker.** The analysis job runner keeps state in-process; scale with
 replicas, not workers.
+
+`requirements-dev.txt` is deliberately absent here. It exists so that what gets
+deployed is only what runs.
 
 ### Frontend
 
@@ -470,392 +484,250 @@ npm start
 
 ---
 
-## 11. Deploying the frontend to Vercel
+## 11. Deploying to Vercel
 
-Vercel is the natural host: the frontend is a standard Next.js app with no
-special requirements.
+Both services, one project. The repository is already configured; what follows
+is what each file does and why. For click-by-click instructions, use
+[GO_LIVE.md](GO_LIVE.md).
 
-1. Push the repository to GitHub.
-2. In Vercel, **Add New → Project** and import it.
-3. Set **Root Directory** to `frontend`. Everything else is detected.
-4. Add the environment variables:
+### What `vercel.json` declares
 
-   | Name | Value | Required |
-   | --- | --- | --- |
-   | `BACKEND_API_URL` | Your deployed backend URL, e.g. `https://insightflow-api.onrender.com` | yes |
-   | `NEXT_PUBLIC_SITE_URL` | Your production URL, e.g. `https://insightflow.vercel.app` | yes |
-   | `PROXY_SHARED_SECRET` | The same value you set on the backend | strongly recommended |
-   | `NEXT_PUBLIC_DEMO_ENABLED` | `true`, or `false` to hide the sample-data button | no |
-   | `NEXT_PUBLIC_SOURCE_URL` | Your repository URL, shown in the footer | no |
-
-   Without `PROXY_SHARED_SECRET` the backend sees every request as coming from
-   Vercel's servers, so the authentication rate limit — 10 requests per 5
-   minutes — becomes one budget shared by every user of the product.
-
-5. Deploy.
-
-### What Vercel needs, exactly
-
-| Setting | Value |
-| --- | --- |
-| Framework preset | Next.js (auto-detected) |
-| Root directory | `frontend` |
-| Build command | `npm run build` (default) |
-| Install command | `npm ci` (default) |
-| Output directory | default |
-| Node version | 20 or newer |
-
-`frontend/vercel.json` sets only what Vercel cannot infer: `no-store` on
-`/api/*` responses, the build and install commands, and the region.
-
-The proxy route's time limit is set in the route file itself
-(`app/api/backend/[...path]/route.ts`), as `export const maxDuration = 300`,
-because the number is meaningless without the reasoning next to it:
-
-```
-AI_REQUEST_BUDGET_SECONDS (240)  <  maxDuration (300)  ==  Node's header timeout
+```json
+{
+  "services": {
+    "web": {
+      "root": "frontend/",
+      "framework": "nextjs",
+      "installCommand": "npm ci",
+      "buildCommand": "npm run build",
+      "bindings": [
+        { "type": "service", "service": "api", "format": "url", "env": "BACKEND_API_URL" }
+      ]
+    },
+    "api": {
+      "root": "backend/",
+      "framework": "fastapi",
+      "entrypoint": "app.main:app",
+      "buildCommand": "alembic upgrade head"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": { "service": "web" } }]
+}
 ```
 
-The ordering is the point. The backend has to be the thing that gives up first,
-because when it does it returns its deterministic answer — a designed and tested
-path that tells the truth. If the platform kills the request first, the user is
-told the service is unreachable while it was in fact answering them, and the
-result that was seconds away is thrown out. 300 is both the default and the
-ceiling for Hobby (and the default on every plan), so nothing needs raising; it
-is stated explicitly so that lowering it later is a visible decision.
+Four things are load-bearing:
+
+- **One rewrite, to `web` only.** A service is unreachable from the internet
+  unless a top-level rewrite exposes it, so `api` has no public address at all.
+  This is stronger than hiding it: there is no URL to find.
+- **The binding injects `BACKEND_API_URL`.** Vercel generates the value, and it
+  is deployment-aware. Setting it by hand would pin every preview deployment to
+  production's backend.
+- **`entrypoint: "app.main:app"`** is the existing FastAPI application object.
+  Nothing was added to make it deployable.
+- **`buildCommand: "alembic upgrade head"`** applies migrations once per
+  deployment. A failure fails the deploy, so code is never live against a schema
+  it does not match.
+
+### Project settings
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| Root Directory | `./` | `vercel.json` at the repository root defines both services. Pointing at `frontend/` deploys the website with no API behind it — the single most common mistake |
+| Framework Preset | `Other` | Each service declares its own |
+| Build / Install commands | empty | Set per service in `vercel.json` |
+| Node version | 20+ | `frontend/package.json` `engines` |
+| Python version | 3.12 | `backend/.python-version`. Vercel supports 3.12–3.14; 3.11 is not available |
+
+### Keeping the Python bundle under the limit
+
+Vercel allows a Python function bundle of **500 MB uncompressed**, and there is
+no tree-shaking — everything reachable at build time is included.
+
+- `backend/requirements.txt` measures roughly **330 MB** installed.
+- `scipy` was declared there and imported nowhere. Removing it saved 134 MB.
+- `pytest` moved to `requirements-dev.txt`. A test runner has no business in a
+  deployed function.
+- `.vercelignore` excludes tests, docs, local databases and the development
+  storage directory.
+
+If a future dependency pushes it over, `requirements.txt` marks `scikit-learn`
+and `pyarrow` as optional and states exactly what dropping each one costs: one
+anomaly detector goes quiet, or the Parquet cache stops being written and CSVs
+are re-parsed instead. Both have tested fallbacks.
 
 ### Preview deployments
 
-Every branch gets one automatically. Give the preview environment the same
-`BACKEND_API_URL` as production unless you run a separate backend for it, and
-remember that `NEXT_PUBLIC_*` values are inlined at build time — changing one
-requires a redeploy, not a restart.
+Every branch and pull request gets a full deployment — frontend *and* backend,
+wired together by the binding. Two things to know:
 
-### Verifying the deployment
+- The build runs `alembic upgrade head` against whatever `DATABASE_URL` is set
+  for the Preview environment. Leave it unset and preview builds fail at that
+  step, which is harmless. Set it to the production value and previews share the
+  production database. Set it to a
+  [Neon branch](https://neon.com/docs/guides/branching-intro) to keep them apart.
+- `NEXT_PUBLIC_SITE_URL` is baked in at build time, so preview builds carry the
+  production URL in their metadata. Cosmetic.
+
+### Verifying a deployment
 
 ```bash
-# The page renders
+# The site
 curl -sI https://your-app.vercel.app | head -1
 
-# Security headers are present
-curl -sI https://your-app.vercel.app | grep -iE "content-security-policy|strict-transport|x-frame"
+# The API, through the proxy — there is no other address
+curl -s https://your-app.vercel.app/api/backend/health
 
-# Metadata generated for the right host
-curl -s https://your-app.vercel.app/robots.txt
-curl -s https://your-app.vercel.app/sitemap.xml
+# Security headers
+curl -sI https://your-app.vercel.app | grep -i "content-security-policy"
+```
 
-# The proxy can reach the backend (401 is correct here — it means the
-# request arrived and was rejected for lack of a session, not that the
-# backend is unreachable, which would be 503)
-curl -s -o /dev/null -w "%{http_code}
-" https://your-app.vercel.app/api/backend/auth/session
+Then the full acceptance run:
 
-# The whole journey, against the deployed stack
+```bash
 cd backend && python scripts/acceptance_check.py --frontend https://your-app.vercel.app
 ```
 
-**Do not try to host the Python backend on Vercel.** See
-[section 0](#0-what-runs-where-and-why) for the three reasons.
-
 ---
 
-## 12. Deploying the backend
+## 12. Deploying as containers instead
 
-Any host that runs a container works. The `backend/Dockerfile` is
-production-ready: multi-stage, non-root, with a health check, and it applies
-migrations on start-up.
+Use this when you need uploads over 4 MB, analyses longer than 300 seconds, or
+simply want to run the thing yourself. The application is the same; only the
+settings differ, and they differ by being left alone.
 
-### Render (simplest free option)
+`backend/Dockerfile` is multi-stage, runs as a non-root user, declares a health
+check, and applies migrations before starting uvicorn. `docker-compose.yml`
+brings up PostgreSQL, the backend and the frontend together.
 
-`render.yaml` in the repository root is a Blueprint: it declares the service,
-its health check, and every environment variable, so the dashboard asks only
-for the secrets.
+```bash
+docker compose up --build
+```
 
-1. **New → Blueprint**, connect the repository, pick `render.yaml`.
-2. Fill in the three values it asks for: `DATABASE_URL` (your Neon direct
-   string), `CORS_ORIGINS` (your Vercel origin), and `PROXY_SHARED_SECRET`.
-3. Deploy. Migrations run at start-up, so there is no separate migration step.
+For a single host, behind a reverse proxy that terminates TLS:
 
-To do it by hand instead: **New → Web Service**, root directory `backend`,
-runtime Docker, then set the variables from
-[section 13](#13-production-environment-variables).
+```bash
+# Backend — note that none of the serverless settings appear here.
+ENVIRONMENT=production
+SECRET_KEY=<48 random characters>
+DATABASE_URL=postgresql+psycopg://user:pass@host:5432/insightflow
+STORAGE_DIR=/app/storage        # a real volume, backed up
+MAX_UPLOAD_SIZE_MB=50
+PROXY_SHARED_SECRET=<32 random characters>
+TRUSTED_PROXY_COUNT=1           # however many proxies you actually run
+CORS_ORIGINS=https://your-app.example.com
+LOG_JSON=true
+```
 
-#### What the free plan gives you, and what it does not
+**Use one worker** (`uvicorn --workers 1`). The analysis job runner keeps state
+in-process; scale with replicas, not workers.
 
-Worth reading before you rely on it, because one of these has a visible effect
-on the product.
+Two things to get right, because both are silent when wrong:
 
-| | Free | Consequence |
+- **`STORAGE_DIR` must be a persistent volume.** If it is container-local,
+  uploads vanish on every restart and `Ask` and `Investigate` start reporting
+  missing files on datasets that are still listed.
+- **`TRUSTED_PROXY_COUNT` must match reality.** It is how many proxies you
+  control in front of the service. Too high and a client can forge its own
+  address; too low and every visitor shares one rate-limit budget.
+
+### Cost, honestly
+
+| | Vercel + Neon | A container host |
 | --- | --- | --- |
-| RAM | 512 MB | Enough. Measured: ~130 MB with the whole app imported, ~137 MB with a 200k-row frame loaded. `render.yaml` lowers `MAX_ANALYSIS_ROWS` to 150,000 to keep a large upload from pushing a 512 MB instance over the edge |
-| Sleep | After 15 minutes idle | ~50 second cold start on the next request. Nothing is lost |
-| Persistent disk | **Not available at all** | See below |
-
-**Render does not offer persistent disks on free instances.** Not as an add-on,
-not for a fee — a disk requires a paid instance type. The consequence is
-specific and worth being precise about, because it is not "you lose your data":
-
-* Everything in PostgreSQL survives: accounts, workspaces, datasets, analyses,
-  metrics, insights, anomalies, reports and cached investigations. That is
-  almost the entire product.
-* The **uploaded file itself** does not survive a restart or redeploy. Two
-  features recompute from it rather than from stored results — `Ask
-  InsightFlow` and re-running an `Investigate` that was not already cached — so
-  after a restart those answer "the file behind this dataset is no longer
-  available; upload it again" instead of working.
-
-That message is deliberate. Both paths check for the file and say so plainly
-rather than returning a 500, so the failure is honest and self-explanatory.
-
-To remove the limitation, move to a paid instance ($7/month) and uncomment the
-`disk:` block in `render.yaml`, which mounts 1 GB at `/app/storage`
-($0.25/GB/month). Nothing else changes: `STORAGE_DIR` already points there.
-
-### Fly.io
-
-```bash
-cd backend
-fly launch --no-deploy
-fly volumes create insightflow_storage --size 1
-fly secrets set SECRET_KEY=... DATABASE_URL=... CORS_ORIGINS=https://your-app.vercel.app
-fly deploy
-```
-
-Mount the volume at `/app/storage` in `fly.toml`.
-
-### Railway
-
-Connect the repository, set the root directory to `backend`, add the PostgreSQL
-plugin, and set the same variables. Add a volume at `/app/storage`.
-
-### A VPS
-
-```bash
-docker build -t insightflow-api ./backend
-docker run -d --name insightflow-api \
-  -p 8000:8000 \
-  -v insightflow-storage:/app/storage \
-  --env-file backend/.env.production \
-  insightflow-api
-```
-
-Put nginx or Caddy in front for TLS.
-
-### Estimated cost
-
-| Component | Free option | What the free tier costs you | Paid from |
-| --- | --- | --- | --- |
-| Frontend | Vercel Hobby | Nothing relevant here | $20/month (Pro) |
-| Backend | Render free instance | Sleeps after 15 min idle (~50s cold start); no persistent disk | $7/month |
-| Database | Neon free tier | Storage and compute-hour caps; fine for a demo | ~$5/month |
-| AI | Groq free tier, or `AI_ENABLED=false` | Rate limited per minute; no card required | Groq pay-as-you-go |
-
-The whole product does run at **$0**, and the two things it costs you are the
-cold start and the uploaded files not surviving a restart. Both are stated
-above in full. Paying $7 for a Render instance with a disk removes both.
+| Money | $0 | Typically $5–7/month plus a disk |
+| Upload ceiling | 4 MB | 50 MB, or whatever you set |
+| Analysis ceiling | 300s | Whatever you allow |
+| Cold start | A few seconds, plus Neon waking | None, if it never sleeps |
+| Operations | None | Yours |
 
 ---
 
 ## 13. Production environment variables
 
-### Backend
+The full reference is [ENVIRONMENT.md](ENVIRONMENT.md), including a
+copy-pasteable block for each target. The rules that matter wherever you deploy:
 
-```bash
-ENVIRONMENT=production
-SECRET_KEY=<48+ random characters>
-DATABASE_URL=postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
-CORS_ORIGINS=https://your-app.vercel.app
-PROXY_SHARED_SECRET=<the same value as the frontend>
-TRUSTED_PROXY_COUNT=1
-STORAGE_DIR=/app/storage
-LOG_JSON=true
-RATE_LIMIT_ENABLED=true
-```
-
-#### The AI half
-
-There are three configurations and all three are supported. Pick one.
-
-**A hosted model on a free tier — the right default for a deployed demo.**
-
-```bash
-AI_ENABLED=true
-AI_PROVIDER=openai
-OPENAI_BASE_URL=https://api.groq.com/openai/v1
-OPENAI_API_KEY=gsk_...
-OPENAI_MODEL=openai/gpt-oss-120b
-```
-
-`openai` names the wire protocol, not the vendor. The provider class speaks
-`POST /chat/completions`, which is what Groq, Together, OpenRouter, vLLM and LM
-Studio all serve, so switching between them is a change of two environment
-variables and no code.
-
-[Groq](https://console.groq.com/keys) is the recommendation because it is
-genuinely free — a developer tier with no credit card, rate limited per minute
-rather than metered — and because it is fast. That second property matters more
-than it sounds: a local CPU model takes 60–180 seconds per answer, which is why
-`AI_REQUEST_BUDGET_SECONDS` and the proxy's `maxDuration` have to be reasoned
-about at all. A hosted model answers in seconds and the whole timeout question
-stops being load-bearing. Hitting the rate limit returns "the AI provider is
-rate limiting requests, try again shortly"; the deterministic analysis is
-untouched, because it never goes near the model.
-
-**No model at all.** Fully supported, and what CI runs against, which is how we
-know the product is complete without it:
-
-```bash
-AI_ENABLED=false
-AI_PROVIDER=none
-```
-
-Every number in the product — metrics, trends, segment movements, anomalies,
-investigations — is computed in pandas and stays computed. What you lose is the
-written explanation over the top of it; the evidence itself is unchanged, and
-the interface says the model is unavailable rather than pretending otherwise.
-
-**A local model (Ollama).** Development only. It needs a host with the model
-resident in memory, which neither Vercel nor a 512 MB free instance is.
-
-**Paid OpenAI or Anthropic** work too — set `OPENAI_BASE_URL` back to
-`https://api.openai.com/v1` — but nothing in this deployment requires them.
-
-With `ENVIRONMENT=production` the application **refuses to start** if
-`SECRET_KEY` is still the development placeholder, if it is shorter than 32
-characters, if `DATABASE_URL` is empty, or if `AI_PROVIDER=openai` without an
-API key. This is deliberate: a misconfigured deployment should fail loudly at
-boot rather than quietly issue forgeable sessions.
-
-### Frontend
-
-```bash
-BACKEND_API_URL=https://your-api-host.com
-PROXY_SHARED_SECRET=<the same value as the backend>
-NEXT_PUBLIC_SITE_URL=https://your-app.vercel.app
-NEXT_PUBLIC_DEMO_ENABLED=true
-```
+- **`SECRET_KEY` and `DATABASE_URL` are required in production.** The
+  application refuses to start without them, and refuses a `SECRET_KEY` that is
+  short or is still the development placeholder. That check is deliberate: a
+  deployment that boots with a known signing key is worse than one that does not
+  boot.
+- **`PROXY_SHARED_SECRET` must be identical on both halves.** On Vercel that is
+  automatic — one project, one set of variables. Without it every visitor shares
+  one rate-limit budget, because every request reaches the backend from the same
+  place.
+- **Only two variables may be `NEXT_PUBLIC_`**: `NEXT_PUBLIC_SITE_URL` and
+  `NEXT_PUBLIC_MAX_UPLOAD_MB`. Anything with that prefix is compiled into the
+  JavaScript every visitor downloads. `DATABASE_URL`, `SECRET_KEY`,
+  `PROXY_SHARED_SECRET` and `OPENAI_API_KEY` must never carry it.
+- **`BACKEND_API_URL` is set by hand only outside Vercel.** On Vercel the
+  service binding generates it.
 
 ### Deployment checklist
 
-- [ ] `SECRET_KEY` is new and random; `PROXY_SHARED_SECRET` is identical on both halves
-- [ ] `CORS_ORIGINS` lists only your real frontend origin
-- [ ] `DATABASE_URL` points at PostgreSQL, not SQLite, and at Neon's **direct**
-      endpoint (no `-pooler` in the host)
-- [ ] `alembic upgrade head` has run
-- [ ] `STORAGE_DIR` is on a persistent volume
-- [ ] No `.env` file is committed (`git check-ignore backend/.env`)
-- [ ] `/api/v1/health` returns `"status": "ok"`
-- [ ] `python scripts/acceptance_check.py --frontend https://your-app.vercel.app` passes
+- [ ] `SECRET_KEY` generated fresh, never reused from another environment
+- [ ] `DATABASE_URL` points at PostgreSQL, pooled if the host is serverless
+- [ ] `PROXY_SHARED_SECRET` set
+- [ ] `STORAGE_BACKEND` matches whether the host has a durable disk
+- [ ] `ANALYSIS_EXECUTION` matches whether the host runs work behind a response
+- [ ] Upload limits agree: `MAX_UPLOAD_SIZE_MB` and `NEXT_PUBLIC_MAX_UPLOAD_MB`
+- [ ] `NEXT_PUBLIC_SITE_URL` is the real public origin, no trailing slash
+- [ ] Migrations applied (`alembic upgrade head`, or the Vercel build)
+- [ ] `/health` returns `"database": true`
+- [ ] A real upload, analysis, question and report completed against the live URL
 
 ---
 
 ## 14. The whole deploy, in order
 
-> Following this for the first time? [GO_LIVE.md](GO_LIVE.md) is the same
-> sequence written click by click — which button, which field, what each free
-> tier actually does, and what to do when a step fails. This section is the
-> condensed version for someone who has deployed before.
-
-Sections 11–13 explain each half. This is the sequence, start to finish, on the
-free tier. It takes about twenty minutes, most of it waiting for builds.
-
-The order is not arbitrary: each step produces a value the next one needs.
+The short version of [GO_LIVE.md](GO_LIVE.md), for someone who has done this
+before.
 
 ### 1. Database — Neon
 
-1. Create a project at [neon.tech](https://neon.tech).
-2. Copy the connection string, and take the **direct** one — the host without
-   `-pooler` in it. [Section 3](#3-postgresql-setup) explains why that is the
-   right one for this backend.
-
-Nothing to migrate by hand: the container runs `alembic upgrade head` before
-uvicorn starts, so the schema is created on the backend's first boot.
+Create a project at [neon.com](https://neon.com). Copy the **pooled** connection
+string — the hostname contains `-pooler`. The direct string exhausts the free
+plan's connection limit once more than a couple of function instances are warm.
 
 ### 2. Two secrets
 
-Generate them now; both halves need them and they must match where noted.
-
 ```bash
-# SECRET_KEY — backend only. Signs session tokens.
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-
-# PROXY_SHARED_SECRET — the SAME value on the backend and on Vercel.
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+python -c "import secrets; print(secrets.token_urlsafe(48))"   # SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(32))"   # PROXY_SHARED_SECRET
 ```
-
-If you deploy the backend from `render.yaml`, Render generates `SECRET_KEY`
-itself and you never see it, which is better. You still need
-`PROXY_SHARED_SECRET` by hand, because it has to be identical in two places.
 
 ### 3. AI — optional, free, and skippable
 
-Skip this entirely if you want. The product is complete without it: every
-number is computed in pandas, and CI proves the whole suite passes with
-`AI_ENABLED=false`. You can add a key later without redeploying anything else.
+Skip and the product works; every number is computed deterministically either
+way, and only the prose gets plainer. To enable it, get a key at
+[console.groq.com/keys](https://console.groq.com/keys) and set `AI_ENABLED=true`,
+`AI_PROVIDER=openai`, `OPENAI_BASE_URL=https://api.groq.com/openai/v1`,
+`OPENAI_MODEL=openai/gpt-oss-120b`, `OPENAI_API_KEY=gsk_...`.
 
-To enable it: get a key at [console.groq.com/keys](https://console.groq.com/keys)
-(free, no credit card), then set `AI_ENABLED=true`, `AI_PROVIDER=openai`, and
-`OPENAI_API_KEY` on the backend. The base URL and model are already set for
-Groq in `render.yaml`.
+`AI_PROVIDER=openai` names the protocol, not the vendor. Model names get retired
+from free tiers on a schedule; the current list is at
+[console.groq.com/docs/rate-limits](https://console.groq.com/docs/rate-limits).
 
-### 4. Backend — Render
+### 4. Vercel
 
-**New → Blueprint**, pick this repository. Render reads `render.yaml` and asks
-for `DATABASE_URL`, `CORS_ORIGINS` and `PROXY_SHARED_SECRET`.
+**Add New -> Project**, pick the repository, set **Root Directory to `./`**, paste
+the environment variables from [GO_LIVE.md §5](GO_LIVE.md#5-environment-variables),
+deploy. The build installs both services and runs the migrations.
 
-`CORS_ORIGINS` is the one value you do not have yet — Vercel has not given you
-a URL. Put a placeholder in, and come back to it in step 6.
+### 5. Close the loop
 
-When the build finishes, check it:
+Set `NEXT_PUBLIC_SITE_URL` to the deployment URL and redeploy — it is baked in at
+build time, so it needs one.
 
-```bash
-curl -s https://your-api.onrender.com/api/v1/health
-```
-
-`"status": "ok"` and `"database": true` means the container is up and the
-migrations ran against Neon. `"ai"` reporting unavailable is expected and fine.
-
-Read [section 12](#12-deploying-the-backend) on what the free instance does and
-does not give you before you rely on it — particularly the absence of a
-persistent disk.
-
-### 5. Frontend — Vercel
-
-**Add New → Project**, import the repository, set **Root Directory** to
-`frontend`, and add:
-
-| Name | Value |
-| --- | --- |
-| `BACKEND_API_URL` | the Render URL from step 4 |
-| `PROXY_SHARED_SECRET` | the value from step 2, byte for byte |
-| `NEXT_PUBLIC_SITE_URL` | your Vercel URL (you can fill this in after the first deploy and redeploy) |
-
-Deploy.
-
-### 6. Close the loop
-
-Go back to Render and set `CORS_ORIGINS` to the real Vercel origin, e.g.
-`https://insightflow-ai.vercel.app`. The service restarts itself.
-
-This is belt and braces — the browser only ever talks to Vercel, so CORS is not
-on the request path — but a correct value costs nothing and a wildcard would be
-a real mistake.
-
-### 7. Prove it works
+### 6. Prove it works
 
 ```bash
-# The proxy reaches the backend. 401 is the correct answer: it means the
-# request arrived and was rejected for lack of a session. 503 would mean
-# BACKEND_API_URL is wrong.
-curl -s -o /dev/null -w "%{http_code}
-" https://your-app.vercel.app/api/backend/auth/session
-
-# The full journey — signup, upload, analysis, insights, anomalies,
-# investigation, isolation between tenants — against the deployed stack.
+curl -s https://your-app.vercel.app/api/backend/health
 cd backend && python scripts/acceptance_check.py --frontend https://your-app.vercel.app
 ```
 
-75 checks. If they pass, the deployment is real, and you have tested it rather
+76 checks. If they pass, the deployment is real, and you have tested it rather
 than assumed it.
 
 ---
@@ -943,7 +815,7 @@ taskkill /PID <pid> /F
 ### Tests fail after pulling changes
 
 ```bash
-cd backend && pip install -r requirements.txt
+cd backend && pip install -r requirements.txt -r requirements-dev.txt
 cd ../frontend && npm install
 ```
 

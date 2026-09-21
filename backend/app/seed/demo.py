@@ -31,12 +31,13 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.analytics.ingestion import checksum, read_upload
+from app.analytics.ingestion import checksum, frame_to_parquet_bytes, read_upload
 from app.analytics.profiling import build_preview, column_summary, profile_dataset
 from app.analytics.types import Grain
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.logging import get_logger
+from app.core.storage import get_storage, storage_key
 from app.db.models import (
     Analysis,
     Dataset,
@@ -68,10 +69,8 @@ class DemoUnavailableError(AppError):
     code = "demo_unavailable"
 
 
-def _storage_dir(workspace_id: uuid.UUID, dataset_id: uuid.UUID) -> Path:
-    path = settings.uploads_path / str(workspace_id) / str(dataset_id)
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+def _dataset_prefix(workspace_id: uuid.UUID, dataset_id: uuid.UUID) -> str:
+    return storage_key("uploads", str(workspace_id), str(dataset_id))
 
 
 def install_demo_dataset(db: Session, workspace: Workspace, user: User) -> Dataset:
@@ -118,15 +117,17 @@ def install_demo_dataset(db: Session, workspace: Workspace, user: User) -> Datas
     db.add(dataset)
     db.flush()
 
-    directory = _storage_dir(workspace.id, dataset.id)
-    raw_path = directory / DEMO_FILENAME
-    raw_path.write_bytes(raw)
-    dataset.storage_path = str(raw_path.relative_to(settings.storage_path))
+    storage = get_storage()
+    prefix = _dataset_prefix(workspace.id, dataset.id)
+
+    raw_key = storage_key(prefix, DEMO_FILENAME)
+    storage.write(raw_key, raw, db=db)
+    dataset.storage_path = raw_key
 
     try:
-        normalized = directory / "normalized.parquet"
-        result.frame.to_parquet(normalized, index=False)
-        dataset.normalized_path = str(normalized.relative_to(settings.storage_path))
+        normalized_key = storage_key(prefix, "normalized.parquet")
+        storage.write(normalized_key, frame_to_parquet_bytes(result.frame), db=db)
+        dataset.normalized_path = normalized_key
     except Exception:  # noqa: BLE001
         # The parquet cache is an optimisation; the CSV remains the source.
         logger.warning("could not write demo parquet cache")
@@ -285,6 +286,11 @@ def retire_workspace_files(workspace_id: uuid.UUID) -> None:
     in a loop would just fail again while whatever holds the handle still holds
     it.
 
+    None of that applies when files are rows: a ``DELETE`` either happens or
+    rolls back, nothing holds a handle, and there is nothing to sweep later. So
+    that backend takes the direct path and the rest of this function is the
+    filesystem's problem alone.
+
     So a directory that cannot be removed is *renamed* instead. The suffix is
     the record that this directory belongs to a workspace that no longer
     exists — which is what makes the later sweep safe. Inferring the same thing
@@ -292,6 +298,16 @@ def retire_workspace_files(workspace_id: uuid.UUID) -> None:
     ``DATABASE_URL`` pointing at an empty database made every real customer's
     files look orphaned.
     """
+    if settings.storage_backend != "local":
+        try:
+            get_storage().delete_prefix(storage_key("uploads", str(workspace_id)))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "could not remove workspace files",
+                extra={"workspace_id": str(workspace_id), "reason": str(exc)[:200]},
+            )
+        return
+
     directory = settings.uploads_path / str(workspace_id)
     if _remove_tree(directory):
         return
@@ -318,7 +334,13 @@ def sweep_retired_upload_dirs() -> int:
     Only directories carrying the suffix this module writes are touched, so the
     sweep can never remove files belonging to a workspace that still exists —
     however the database happens to be configured when it runs.
+
+    Nothing is ever marked on a backend that stores files as rows, so there is
+    nothing for this to collect there.
     """
+    if settings.storage_backend != "local":
+        return 0
+
     root = settings.uploads_path
     if not root.exists():
         return 0

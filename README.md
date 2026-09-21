@@ -209,7 +209,7 @@ cd "InsightFlow AI"
 # Backend
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 
@@ -224,9 +224,12 @@ Open <http://localhost:3000> and click **Explore the live demo**. No account, no
 password, no file — you will be looking at a full analysis of 14,000 orders
 within a few seconds.
 
-To put it online — free, about thirty minutes, no credit card — follow
-[docs/GO_LIVE.md](docs/GO_LIVE.md). For PostgreSQL, Ollama, and the reasoning
-behind the deployment choices, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+To put it online — free, about twenty-five minutes, no credit card — follow
+[docs/GO_LIVE.md](docs/GO_LIVE.md). It deploys to **one Vercel project and one
+Neon database**: the Next.js frontend and the FastAPI backend are two Vercel
+services sharing a domain, and the backend has no public address of its own. For
+PostgreSQL, Ollama, container hosting, and the reasoning behind those choices,
+see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 

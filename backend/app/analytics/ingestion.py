@@ -434,7 +434,73 @@ def load_frame(path: Path) -> pd.DataFrame:
     """Reload a previously normalised dataset from disk."""
     if path.suffix == ".parquet":
         return pd.read_parquet(path)
-    raw = path.read_bytes()
-    if path.suffix.lower() in {".xlsx", ".xls"}:
+    return load_frame_bytes(path.read_bytes(), path.name)
+
+
+def load_frame_bytes(raw: bytes, name: str) -> pd.DataFrame:
+    """Reload a previously normalised dataset from its bytes.
+
+    The same job as :func:`load_frame`, for storage backends that hand back
+    content rather than a path. Keeping the format decision here — rather than
+    at each call site — is what lets the storage backend change without any of
+    the analysis code knowing.
+    """
+    suffix = Path(name).suffix.lower()
+    if suffix == ".parquet":
+        return pd.read_parquet(io.BytesIO(raw))
+    if suffix in {".xlsx", ".xls"}:
         return read_excel(raw).frame
     return read_csv(raw).frame
+
+
+class DatasetFileMissingError(FileNotFoundError):
+    """The stored file behind a dataset is gone.
+
+    Its own type because every caller has the same thing to say about it and
+    none of them can do anything else: the analysis, `Ask` and `Investigate` all
+    recompute from the file, so when it is missing the honest answer is to tell
+    the user to upload it again — not to raise a generic error that reads as a
+    fault on our side for a problem they can fix in ten seconds.
+    """
+
+
+def read_dataset_frame(
+    storage_path: str, normalized_path: str | None = None, db: Any = None
+) -> pd.DataFrame:
+    """Load a stored dataset, preferring the normalised copy.
+
+    The single place that turns "a dataset row" into "a DataFrame". Both keys
+    are tried because the Parquet cache is written on a best-effort basis: an
+    upload whose cache failed still has its original file, and falling back is
+    the difference between a slower read and a dataset that cannot be analysed.
+
+    Pass ``db`` from a request handler that already holds a session. Storing
+    files in the database otherwise means this read opens a second connection
+    while the first is still held, which on a small serverless pool halves the
+    requests an instance can serve concurrently.
+    """
+    from app.core.storage import get_storage
+
+    storage = get_storage()
+    candidates = [key for key in (normalized_path, storage_path) if key]
+
+    for key in candidates:
+        try:
+            raw = storage.read(key, db=db)
+        except FileNotFoundError:
+            continue
+        return load_frame_bytes(raw, Path(key).name)
+
+    raise DatasetFileMissingError(candidates[0] if candidates else "")
+
+
+def frame_to_parquet_bytes(frame: pd.DataFrame) -> bytes:
+    """Serialise a frame to Parquet in memory.
+
+    The normalised copy is a cache: every later analysis reads columnar bytes
+    instead of re-parsing a CSV and re-inferring its types. Callers treat a
+    failure here as non-fatal, because the original file remains authoritative.
+    """
+    buffer = io.BytesIO()
+    frame.to_parquet(buffer, index=False)
+    return buffer.getvalue()

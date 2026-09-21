@@ -51,20 +51,29 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
     )
 
     init_db()
-    settings.uploads_path.mkdir(parents=True, exist_ok=True)
+    if settings.storage_backend == "local":
+        settings.uploads_path.mkdir(parents=True, exist_ok=True)
 
-    # A process that died mid-analysis leaves rows marked "running" that would
-    # otherwise spin in the UI forever.
-    reconcile_stale_jobs()
+    # Everything below runs once per process. On a server that is once per
+    # deploy and costs nothing; where each cold start is a new process it would
+    # be a tax on unpredictable requests, and the warm-up thread would be
+    # pointless there for the same reason the job pool is. Each task has
+    # another trigger — stale jobs are failed when one is polled, demo sessions
+    # are purged whenever a demo is created — so switching this off loses
+    # nothing but the head start.
+    if settings.startup_tasks_enabled:
+        # A process that died mid-analysis leaves rows marked "running" that
+        # would otherwise spin in the UI forever.
+        reconcile_stale_jobs()
 
-    # Expired demo workspaces and their files. Done here rather than on a
-    # scheduler so the product needs no second process to stay tidy; a demo
-    # created moments before a restart simply lives out its full lifetime.
-    _purge_demo_sessions()
+        # Expired demo workspaces and their files. Done here rather than on a
+        # scheduler so the product needs no second process to stay tidy; a demo
+        # created moments before a restart simply lives out its full lifetime.
+        _purge_demo_sessions()
 
-    # Load the model in the background so the first question does not pay the
-    # cold-start cost. Best effort; failure is logged and ignored.
-    warm_up_async()
+        # Load the model in the background so the first question does not pay
+        # the cold-start cost. Best effort; failure is logged and ignored.
+        warm_up_async()
 
     yield
 

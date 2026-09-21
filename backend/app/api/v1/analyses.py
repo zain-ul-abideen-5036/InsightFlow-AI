@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Query, Request, status
 from sqlalchemy import func, select
 
 from app.analytics.types import Grain
+from app.core.config import settings
 from app.api.deps import (
     CurrentUser,
     CurrentWorkspace,
@@ -111,10 +114,78 @@ def list_analyses(
     )
 
 
-@router.get("/{analysis_id}", response_model=AnalysisOut)
-def get_analysis_status(analysis: ScopedAnalysis) -> AnalysisOut:
-    """Status and stage progress. Polled by the frontend while running."""
+@router.post("/{analysis_id}/run", response_model=AnalysisOut)
+def run_analysis(analysis: ScopedAnalysis, db: DbSession) -> AnalysisOut:
+    """Run a queued analysis to completion, synchronously.
+
+    The client calls this once, immediately after the analysis is created, and
+    keeps polling ``GET /{analysis_id}`` for the staged progress as it always
+    has. The two requests are independent on purpose: this one may take as long
+    as the analysis takes, while the poll stays fast.
+
+    It is safe to call in any deployment and safe to call twice. Where
+    ``ANALYSIS_EXECUTION=thread`` the pool has normally claimed the job already,
+    so this returns the current status without running anything — which is why
+    the client does not need to know which mode the backend is in. The claim is
+    a conditional UPDATE, so a double-click cannot produce two runs.
+    """
+    from app.jobs.runner import run_analysis_now
+
+    if analysis.status in (JobStatus.QUEUED, JobStatus.RUNNING):
+        analysis_id = analysis.id
+
+        # Let go of this request's connection before starting.
+        #
+        # Loading the analysis opened a transaction, and the work below takes as
+        # long as the analysis takes — up to the platform's whole request budget.
+        # Holding a pooled connection idle-in-transaction for that duration,
+        # while the job opens its own connections to commit each stage, is how a
+        # handful of concurrent analyses exhaust a small pool and start failing
+        # requests that had nothing to do with them. On SQLite it is worse: the
+        # read lock this would keep open contends with the job's writes.
+        db.commit()
+
+        run_analysis_now(analysis_id)
+        db.refresh(analysis)
+
     return AnalysisOut.model_validate(analysis)
+
+
+@router.get("/{analysis_id}", response_model=AnalysisOut)
+def get_analysis_status(analysis: ScopedAnalysis, db: DbSession) -> AnalysisOut:
+    """Status and stage progress. Polled by the frontend while running.
+
+    Also where an abandoned job is noticed. A run that was interrupted — the
+    process was killed, a serverless invocation timed out — leaves a row that
+    says ``running`` and never changes again, and the UI would spin on it
+    forever. Start-up reconciliation catches these on a long-lived server, but
+    a deployment that never "starts up" in that sense needs them caught
+    somewhere, and the poll is exactly the moment someone is waiting on an
+    answer.
+    """
+    _fail_if_abandoned(analysis, db)
+    return AnalysisOut.model_validate(analysis)
+
+
+def _fail_if_abandoned(analysis: Analysis, db: DbSession) -> None:
+    """Mark a job that can no longer be running as failed."""
+    if analysis.status not in (JobStatus.QUEUED, JobStatus.RUNNING):
+        return
+
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=settings.analysis_stale_minutes)
+    started = analysis.started_at or analysis.created_at
+    if started is None or started >= cutoff:
+        return
+
+    analysis.status = JobStatus.FAILED
+    analysis.error_code = "interrupted"
+    analysis.error_message = (
+        "This analysis was interrupted, most likely because the server restarted."
+    )
+    analysis.error_hint = "Run the analysis again."
+    analysis.finished_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(analysis)
 
 
 @router.get("/{analysis_id}/results", response_model=AnalysisDetailOut)

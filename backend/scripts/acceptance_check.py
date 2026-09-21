@@ -43,7 +43,12 @@ def section(title: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--frontend", default="http://localhost:3000")
-    parser.add_argument("--backend", default="http://localhost:8000")
+    # Optional, and empty by default. In the deployment this project ships,
+    # the API is an internal service with no public address — the only way to
+    # reach it is through the frontend, which is also how a real user reaches
+    # it, so that is the default path. Pass a URL to probe a backend directly
+    # when it does have one.
+    parser.add_argument("--backend", default="")
     # Must exceed the backend's own AI_TIMEOUT_SECONDS (180 by default), and
     # by a wide margin. A client that gives up at the same moment the server
     # does can never observe the server's graceful timeout path — it just sees
@@ -81,7 +86,11 @@ def main() -> int:
         ),
     )
 
-    health = httpx.get(f"{backend}/api/v1/health", timeout=30)
+    health = (
+        httpx.get(f"{backend}/api/v1/health", timeout=30)
+        if backend
+        else client.get(api("/health"))
+    )
     check("Backend health endpoint responds", health.status_code == 200)
     health_body = health.json()
     check("Database is reachable", health_body.get("database") is True)
@@ -169,6 +178,22 @@ def main() -> int:
         return summarise()
 
     analysis_id = confirm.json()["analysis"]["id"]
+
+    # Ask for the analysis to run, which is what the browser does on this screen.
+    #
+    # Whether it is this request that does the work depends on the deployment:
+    # where the backend runs analyses on a thread pool it has already claimed
+    # the job and this returns the current status, and where it cannot run work
+    # behind a response this request *is* the analysis. The client does not know
+    # which, and neither does this script — that is the point. Sent without
+    # waiting for it, so the polling below reports progress exactly as the UI
+    # does.
+    run = client.post(
+        api(f"/workspaces/{workspace_id}/analyses/{analysis_id}/run"),
+        timeout=args.timeout,
+    )
+    check("Analysis run accepted", run.status_code == 200, run.text[:180])
+
     deadline = time.time() + args.timeout
     analysis: dict[str, Any] = {}
     observed_running = False

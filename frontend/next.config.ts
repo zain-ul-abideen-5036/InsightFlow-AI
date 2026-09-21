@@ -70,10 +70,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Uploaded files are proxied through a route handler; allow a generous body.
-  experimental: {
-    serverActions: { bodySizeLimit: "50mb" },
-  },
+  // No `serverActions.bodySizeLimit` here, deliberately.
+  //
+  // It used to be set to 50mb "for uploads", which did nothing: uploads go
+  // through the `/api/backend/[...path]` route handler, and that option governs
+  // Server Actions only — of which this application has none. The real ceilings
+  // are the backend's MAX_UPLOAD_SIZE_MB and, on a serverless host, the
+  // platform's own request-body limit, which no framework setting can raise.
+  // The browser enforces the smaller of the two first, via MAX_UPLOAD_MB, so the
+  // rejection is phrased in the product's words. See lib/site.ts.
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
