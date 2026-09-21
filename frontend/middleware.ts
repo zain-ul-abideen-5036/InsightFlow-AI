@@ -56,6 +56,10 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Node.js, not Edge. Vercel Services does not deploy Edge Function output, and
+  // this middleware has no use for the Edge runtime: it reads one cookie and
+  // redirects. Stable since Next.js 15.5.
+  runtime: "nodejs",
   matcher: [
     /*
      * Everything except Next internals, the API routes (which handle their own
