@@ -256,8 +256,9 @@ The ones you are most likely to change:
 | --- | --- | --- | --- |
 | `DATABASE_URL` | backend | *(SQLite)* | PostgreSQL connection string |
 | `SECRET_KEY` | backend | dev placeholder | Signs tokens — **must** change in production |
-| `AI_PROVIDER` | backend | `ollama` | `ollama`, `openai`, or `none` |
+| `AI_PROVIDER` | backend | `ollama` | `ollama`, `openai`, or `none`. `openai` means the protocol, not the vendor |
 | `AI_ENABLED` | backend | `true` | `false` disables written explanations entirely |
+| `OPENAI_BASE_URL` | backend | Groq's endpoint | Any OpenAI-compatible server. Groq's free developer tier needs no credit card |
 | `MAX_UPLOAD_SIZE_MB` | backend | `50` | Upload ceiling |
 | `BACKEND_API_URL` | frontend | `http://localhost:8000` | Where the Next.js server reaches the API |
 | `PROXY_SHARED_SECRET` | both | *(empty)* | Lets the API trust the client address the frontend forwards |
@@ -267,16 +268,16 @@ The ones you are most likely to change:
 ## Testing
 
 ```bash
-# Backend — 277 tests
+# Backend — 278 tests
 cd backend && pytest
 
-# Frontend — 74 tests
+# Frontend — 80 tests
 cd frontend && npm run check      # typecheck + lint + tests
 
 # Full-stack acceptance — 75 checks, with both servers running
 cd backend && python scripts/acceptance_check.py
 
-# Browser end to end — 10 tests, with both servers running
+# Browser end to end — 11 tests, with both servers running
 cd frontend && npx playwright test --project=chromium
 ```
 
@@ -346,7 +347,7 @@ backend/
     db/          SQLAlchemy models and session management
     jobs/        async analysis runner
     seed/        the NovaMart generator
-  tests/         277 tests
+  tests/         278 tests
   scripts/       acceptance_check.py
 
 frontend/
@@ -355,7 +356,7 @@ frontend/
   features/      domain modules — datasets, analysis, insights, anomalies,
                  chat, reports, settings, onboarding
   lib/           API client, session handling, formatting
-  tests/         74 tests
+  tests/         80 tests
 
 docs/            ARCHITECTURE.md · DEPLOYMENT.md · SECURITY.md
                  AI_GUARDRAILS.md · TESTING.md · DEVELOPMENT.md

@@ -98,7 +98,9 @@ both halves. See [SECURITY.md §4](SECURITY.md#4-identifying-the-caller).
 | `AI_MAX_SAMPLE_ROWS` | `25` | Hard ceiling on raw rows that may ever be sent. Nothing currently sends any |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Local Ollama endpoint |
 | `OLLAMA_MODEL` | `qwen2.5:3b-instruct` | Model name |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint. `.env.example` ships Groq's, whose free tier needs no card |
+| `OPENAI_API_KEY` | *(empty)* | **Required when `AI_PROVIDER=openai`** |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model name, as the chosen endpoint spells it (e.g. `llama-3.3-70b-versatile` on Groq) |
 
 > **The AI budget has a hard ceiling of 300 seconds.**
 >
@@ -119,8 +121,6 @@ both halves. See [SECURITY.md §4](SECURITY.md#4-identifying-the-caller).
 >
 > Under the ceiling a slow model is handled properly: the AI layer runs out of
 > time first and the deterministic answer is returned, marked as a fallback.
-| `OPENAI_API_KEY` | *(empty)* | **Required when `AI_PROVIDER=openai`** |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Model name |
 
 ### Demo
 
@@ -203,19 +203,30 @@ PROXY_SHARED_SECRET=<the same 32 characters>
 
 ### Production, hosted model
 
-Replace the AI block:
+Replace the AI block. `AI_PROVIDER=openai` selects the *protocol* — anything
+serving `POST /chat/completions` — not the vendor.
 
 ```bash
 AI_ENABLED=true
 AI_PROVIDER=openai
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_API_KEY=<your key>
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_API_KEY=gsk_<your key>
+OPENAI_MODEL=llama-3.3-70b-versatile
 AI_TIMEOUT_SECONDS=45
 ```
 
 A hosted endpoint answers in seconds rather than minutes, so the generous local
-timeout can come down.
+timeout can come down — and the 300-second ceiling above stops being something
+you have to think about at all.
+
+[Groq](https://console.groq.com/keys) is the default in `.env.example` because
+its developer tier is free without a credit card. Point `OPENAI_BASE_URL` at
+`https://api.openai.com/v1`, Together, OpenRouter, vLLM or LM Studio instead
+and nothing else changes; the free tier is a recommendation, not a dependency.
+
+Free-tier rate limits are per-minute request and token budgets. Exceeding one
+returns a plainly-worded "try again shortly" and leaves the deterministic
+analysis untouched, because no computed number ever passes through the model.
 
 ---
 

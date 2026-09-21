@@ -3,10 +3,10 @@
 ## Running everything
 
 ```bash
-# Backend — 277 tests, ~5-9 minutes
+# Backend — 278 tests, ~5-9 minutes
 cd backend && pytest
 
-# Frontend — 74 tests, typecheck, lint
+# Frontend — 80 tests, typecheck, lint
 cd frontend && npm run check
 
 # Full-stack acceptance — 75 checks, needs both servers running
@@ -278,7 +278,7 @@ the test is loosened.
 
 | Suite | Count |
 | --- | --- |
-| Backend | 277 passed |
-| Frontend | 74 passed |
+| Backend | 278 passed |
+| Frontend | 80 passed |
 | Playwright | 11 passed |
 | Acceptance | 75/75 |

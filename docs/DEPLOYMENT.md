@@ -19,7 +19,8 @@ and you will have InsightFlow AI running locally, then deployed.
 11. [Deploying the frontend to Vercel](#11-deploying-the-frontend-to-vercel)
 12. [Deploying the backend](#12-deploying-the-backend)
 13. [Production environment variables](#13-production-environment-variables)
-14. [Troubleshooting](#14-troubleshooting)
+14. [The whole deploy, in order](#14-the-whole-deploy-in-order)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -112,7 +113,9 @@ there is no CORS to configure in production.
    both halves.
 
 Sections [11](#11-deploying-the-frontend-to-vercel) and
-[12](#12-deploying-the-backend) have the exact steps.
+[12](#12-deploying-the-backend) explain each half;
+[section 14](#14-the-whole-deploy-in-order) is the same sequence as a single
+walkthrough, with the free-tier services named.
 
 ---
 
@@ -202,6 +205,38 @@ free tiers. Copy the connection string they give you into `DATABASE_URL`.
 
 Both `postgres://` and `postgresql://` prefixes are accepted — the application
 rewrites them to the `psycopg` driver it ships.
+
+#### Neon: which of the two connection strings to use
+
+Neon hands you two, and picking the wrong one produces failures that look like
+bugs in the application. Use the **direct** string — the host *without*
+`-pooler` in it — for `DATABASE_URL`.
+
+Neon's pooled endpoint exists for serverless functions that open a connection
+per request and would otherwise exhaust the server's connection slots. This
+backend is the opposite shape: one long-lived process that keeps its own
+SQLAlchemy pool (10 connections, 20 overflow, recycled every 30 minutes), so
+pooling is already handled a layer up and the pooler adds a PgBouncer hop that
+buys nothing.
+
+It also costs something. The pooler runs in transaction mode, where a session
+does not stay on one physical connection, and Neon's own guidance is to use a
+direct connection for schema migrations for exactly that reason. Migrations run
+at container start-up here, so the pooled string would put the riskiest
+operation on the least suitable connection.
+
+```bash
+# Use this — the direct endpoint
+DATABASE_URL=postgresql://user:password@ep-xxx-123456.us-east-2.aws.neon.tech/neondb?sslmode=require
+
+# Not this — the pooled endpoint
+# DATABASE_URL=postgresql://user:password@ep-xxx-123456-pooler.us-east-2.aws.neon.tech/neondb
+```
+
+Keep `?sslmode=require`; Neon requires TLS and psycopg honours the parameter.
+
+If you later run several backend replicas, revisit this: many processes each
+holding a pool is the case the pooler is for.
 
 ### Option C — a local install
 
@@ -470,9 +505,24 @@ special requirements.
 | Output directory | default |
 | Node version | 20 or newer |
 
-`frontend/vercel.json` sets only what Vercel cannot infer: `no-store` on `/api/*`
-responses, and a 60-second `maxDuration` for the proxy route, because an upload
-of a large spreadsheet legitimately takes longer than the default.
+`frontend/vercel.json` sets only what Vercel cannot infer: `no-store` on
+`/api/*` responses, the build and install commands, and the region.
+
+The proxy route's time limit is set in the route file itself
+(`app/api/backend/[...path]/route.ts`), as `export const maxDuration = 300`,
+because the number is meaningless without the reasoning next to it:
+
+```
+AI_REQUEST_BUDGET_SECONDS (240)  <  maxDuration (300)  ==  Node's header timeout
+```
+
+The ordering is the point. The backend has to be the thing that gives up first,
+because when it does it returns its deterministic answer — a designed and tested
+path that tells the truth. If the platform kills the request first, the user is
+told the service is unreachable while it was in fact answering them, and the
+result that was seconds away is thrown out. 300 is both the default and the
+ceiling for Hobby (and the default on every plan), so nothing needs raising; it
+is stated explicitly so that lowering it later is a visible decision.
 
 ### Preview deployments
 
@@ -517,11 +567,49 @@ migrations on start-up.
 
 ### Render (simplest free option)
 
-1. **New → Web Service**, connect the repository.
-2. Root directory: `backend`. Runtime: Docker.
-3. Add a **PostgreSQL** instance and copy its internal connection string.
-4. Set the environment variables from [section 13](#13-production-environment-variables).
-5. Add a persistent disk mounted at `/app/storage` so uploads survive restarts.
+`render.yaml` in the repository root is a Blueprint: it declares the service,
+its health check, and every environment variable, so the dashboard asks only
+for the secrets.
+
+1. **New → Blueprint**, connect the repository, pick `render.yaml`.
+2. Fill in the three values it asks for: `DATABASE_URL` (your Neon direct
+   string), `CORS_ORIGINS` (your Vercel origin), and `PROXY_SHARED_SECRET`.
+3. Deploy. Migrations run at start-up, so there is no separate migration step.
+
+To do it by hand instead: **New → Web Service**, root directory `backend`,
+runtime Docker, then set the variables from
+[section 13](#13-production-environment-variables).
+
+#### What the free plan gives you, and what it does not
+
+Worth reading before you rely on it, because one of these has a visible effect
+on the product.
+
+| | Free | Consequence |
+| --- | --- | --- |
+| RAM | 512 MB | Enough. Measured: ~130 MB with the whole app imported, ~137 MB with a 200k-row frame loaded. `render.yaml` lowers `MAX_ANALYSIS_ROWS` to 150,000 to keep a large upload from pushing a 512 MB instance over the edge |
+| Sleep | After 15 minutes idle | ~50 second cold start on the next request. Nothing is lost |
+| Persistent disk | **Not available at all** | See below |
+
+**Render does not offer persistent disks on free instances.** Not as an add-on,
+not for a fee — a disk requires a paid instance type. The consequence is
+specific and worth being precise about, because it is not "you lose your data":
+
+* Everything in PostgreSQL survives: accounts, workspaces, datasets, analyses,
+  metrics, insights, anomalies, reports and cached investigations. That is
+  almost the entire product.
+* The **uploaded file itself** does not survive a restart or redeploy. Two
+  features recompute from it rather than from stored results — `Ask
+  InsightFlow` and re-running an `Investigate` that was not already cached — so
+  after a restart those answer "the file behind this dataset is no longer
+  available; upload it again" instead of working.
+
+That message is deliberate. Both paths check for the file and say so plainly
+rather than returning a 500, so the failure is honest and self-explanatory.
+
+To remove the limitation, move to a paid instance ($7/month) and uncomment the
+`disk:` block in `render.yaml`, which mounts 1 GB at `/app/storage`
+($0.25/GB/month). Nothing else changes: `STORAGE_DIR` already points there.
 
 ### Fly.io
 
@@ -555,15 +643,16 @@ Put nginx or Caddy in front for TLS.
 
 ### Estimated cost
 
-| Component | Free option | Paid from |
-| --- | --- | --- |
-| Frontend | Vercel Hobby | $0 |
-| Backend | Render free tier (sleeps when idle) | ~$7/month |
-| Database | Neon / Supabase free tier | ~$5/month |
-| AI | Local Ollama, or `AI_ENABLED=false` | $0 |
+| Component | Free option | What the free tier costs you | Paid from |
+| --- | --- | --- | --- |
+| Frontend | Vercel Hobby | Nothing relevant here | $20/month (Pro) |
+| Backend | Render free instance | Sleeps after 15 min idle (~50s cold start); no persistent disk | $7/month |
+| Database | Neon free tier | Storage and compute-hour caps; fine for a demo | ~$5/month |
+| AI | Groq free tier, or `AI_ENABLED=false` | Rate limited per minute; no card required | Groq pay-as-you-go |
 
-The whole product runs at **$0** on free tiers. The trade-off is a cold start of
-about 50 seconds on Render's free tier after inactivity.
+The whole product does run at **$0**, and the two things it costs you are the
+cold start and the uploaded files not surviving a restart. Both are stated
+above in full. Paying $7 for a Render instance with a disk removes both.
 
 ---
 
@@ -574,20 +663,62 @@ about 50 seconds on Render's free tier after inactivity.
 ```bash
 ENVIRONMENT=production
 SECRET_KEY=<48+ random characters>
-DATABASE_URL=postgresql+psycopg://user:pass@host:5432/insightflow
+DATABASE_URL=postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
 CORS_ORIGINS=https://your-app.vercel.app
+PROXY_SHARED_SECRET=<the same value as the frontend>
+TRUSTED_PROXY_COUNT=1
 STORAGE_DIR=/app/storage
 LOG_JSON=true
 RATE_LIMIT_ENABLED=true
-
-# Either a hosted model...
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
-
-# ...or no model at all. The product works fully either way.
-# AI_ENABLED=false
 ```
+
+#### The AI half
+
+There are three configurations and all three are supported. Pick one.
+
+**A hosted model on a free tier — the right default for a deployed demo.**
+
+```bash
+AI_ENABLED=true
+AI_PROVIDER=openai
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_API_KEY=gsk_...
+OPENAI_MODEL=llama-3.3-70b-versatile
+```
+
+`openai` names the wire protocol, not the vendor. The provider class speaks
+`POST /chat/completions`, which is what Groq, Together, OpenRouter, vLLM and LM
+Studio all serve, so switching between them is a change of two environment
+variables and no code.
+
+[Groq](https://console.groq.com/keys) is the recommendation because it is
+genuinely free — a developer tier with no credit card, rate limited per minute
+rather than metered — and because it is fast. That second property matters more
+than it sounds: a local CPU model takes 60–180 seconds per answer, which is why
+`AI_REQUEST_BUDGET_SECONDS` and the proxy's `maxDuration` have to be reasoned
+about at all. A hosted model answers in seconds and the whole timeout question
+stops being load-bearing. Hitting the rate limit returns "the AI provider is
+rate limiting requests, try again shortly"; the deterministic analysis is
+untouched, because it never goes near the model.
+
+**No model at all.** Fully supported, and what CI runs against, which is how we
+know the product is complete without it:
+
+```bash
+AI_ENABLED=false
+AI_PROVIDER=none
+```
+
+Every number in the product — metrics, trends, segment movements, anomalies,
+investigations — is computed in pandas and stays computed. What you lose is the
+written explanation over the top of it; the evidence itself is unchanged, and
+the interface says the model is unavailable rather than pretending otherwise.
+
+**A local model (Ollama).** Development only. It needs a host with the model
+resident in memory, which neither Vercel nor a 512 MB free instance is.
+
+**Paid OpenAI or Anthropic** work too — set `OPENAI_BASE_URL` back to
+`https://api.openai.com/v1` — but nothing in this deployment requires them.
 
 With `ENVIRONMENT=production` the application **refuses to start** if
 `SECRET_KEY` is still the development placeholder, if it is shorter than 32
@@ -608,7 +739,8 @@ NEXT_PUBLIC_DEMO_ENABLED=true
 
 - [ ] `SECRET_KEY` is new and random; `PROXY_SHARED_SECRET` is identical on both halves
 - [ ] `CORS_ORIGINS` lists only your real frontend origin
-- [ ] `DATABASE_URL` points at PostgreSQL, not SQLite
+- [ ] `DATABASE_URL` points at PostgreSQL, not SQLite, and at Neon's **direct**
+      endpoint (no `-pooler` in the host)
 - [ ] `alembic upgrade head` has run
 - [ ] `STORAGE_DIR` is on a persistent volume
 - [ ] No `.env` file is committed (`git check-ignore backend/.env`)
@@ -617,7 +749,113 @@ NEXT_PUBLIC_DEMO_ENABLED=true
 
 ---
 
-## 14. Troubleshooting
+## 14. The whole deploy, in order
+
+Sections 11–13 explain each half. This is the sequence, start to finish, on the
+free tier. It takes about twenty minutes, most of it waiting for builds.
+
+The order is not arbitrary: each step produces a value the next one needs.
+
+### 1. Database — Neon
+
+1. Create a project at [neon.tech](https://neon.tech).
+2. Copy the connection string, and take the **direct** one — the host without
+   `-pooler` in it. [Section 3](#3-postgresql-setup) explains why that is the
+   right one for this backend.
+
+Nothing to migrate by hand: the container runs `alembic upgrade head` before
+uvicorn starts, so the schema is created on the backend's first boot.
+
+### 2. Two secrets
+
+Generate them now; both halves need them and they must match where noted.
+
+```bash
+# SECRET_KEY — backend only. Signs session tokens.
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+
+# PROXY_SHARED_SECRET — the SAME value on the backend and on Vercel.
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+If you deploy the backend from `render.yaml`, Render generates `SECRET_KEY`
+itself and you never see it, which is better. You still need
+`PROXY_SHARED_SECRET` by hand, because it has to be identical in two places.
+
+### 3. AI — optional, free, and skippable
+
+Skip this entirely if you want. The product is complete without it: every
+number is computed in pandas, and CI proves the whole suite passes with
+`AI_ENABLED=false`. You can add a key later without redeploying anything else.
+
+To enable it: get a key at [console.groq.com/keys](https://console.groq.com/keys)
+(free, no credit card), then set `AI_ENABLED=true`, `AI_PROVIDER=openai`, and
+`OPENAI_API_KEY` on the backend. The base URL and model are already set for
+Groq in `render.yaml`.
+
+### 4. Backend — Render
+
+**New → Blueprint**, pick this repository. Render reads `render.yaml` and asks
+for `DATABASE_URL`, `CORS_ORIGINS` and `PROXY_SHARED_SECRET`.
+
+`CORS_ORIGINS` is the one value you do not have yet — Vercel has not given you
+a URL. Put a placeholder in, and come back to it in step 6.
+
+When the build finishes, check it:
+
+```bash
+curl -s https://your-api.onrender.com/api/v1/health
+```
+
+`"status": "ok"` and `"database": true` means the container is up and the
+migrations ran against Neon. `"ai"` reporting unavailable is expected and fine.
+
+Read [section 12](#12-deploying-the-backend) on what the free instance does and
+does not give you before you rely on it — particularly the absence of a
+persistent disk.
+
+### 5. Frontend — Vercel
+
+**Add New → Project**, import the repository, set **Root Directory** to
+`frontend`, and add:
+
+| Name | Value |
+| --- | --- |
+| `BACKEND_API_URL` | the Render URL from step 4 |
+| `PROXY_SHARED_SECRET` | the value from step 2, byte for byte |
+| `NEXT_PUBLIC_SITE_URL` | your Vercel URL (you can fill this in after the first deploy and redeploy) |
+
+Deploy.
+
+### 6. Close the loop
+
+Go back to Render and set `CORS_ORIGINS` to the real Vercel origin, e.g.
+`https://insightflow-ai.vercel.app`. The service restarts itself.
+
+This is belt and braces — the browser only ever talks to Vercel, so CORS is not
+on the request path — but a correct value costs nothing and a wildcard would be
+a real mistake.
+
+### 7. Prove it works
+
+```bash
+# The proxy reaches the backend. 401 is the correct answer: it means the
+# request arrived and was rejected for lack of a session. 503 would mean
+# BACKEND_API_URL is wrong.
+curl -s -o /dev/null -w "%{http_code}
+" https://your-app.vercel.app/api/backend/auth/session
+
+# The full journey — signup, upload, analysis, insights, anomalies,
+# investigation, isolation between tenants — against the deployed stack.
+cd backend && python scripts/acceptance_check.py --frontend https://your-app.vercel.app
+```
+
+75 checks. If they pass, the deployment is real, and you have tested it rather
+than assumed it.
+
+---
+
+## 15. Troubleshooting
 
 ### "We could not reach the analysis service."
 
