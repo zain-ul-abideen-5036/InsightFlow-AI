@@ -100,7 +100,7 @@ both halves. See [SECURITY.md §4](SECURITY.md#4-identifying-the-caller).
 | `OLLAMA_MODEL` | `qwen2.5:3b-instruct` | Model name |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint. `.env.example` ships Groq's, whose free tier needs no card |
 | `OPENAI_API_KEY` | *(empty)* | **Required when `AI_PROVIDER=openai`** |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Model name, as the chosen endpoint spells it (e.g. `llama-3.3-70b-versatile` on Groq) |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model name, as the chosen endpoint spells it (e.g. `openai/gpt-oss-120b` on Groq) |
 
 > **The AI budget has a hard ceiling of 300 seconds.**
 >
@@ -211,7 +211,7 @@ AI_ENABLED=true
 AI_PROVIDER=openai
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_API_KEY=gsk_<your key>
-OPENAI_MODEL=llama-3.3-70b-versatile
+OPENAI_MODEL=openai/gpt-oss-120b
 AI_TIMEOUT_SECONDS=45
 ```
 

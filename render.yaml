@@ -119,6 +119,13 @@ services:
       # base URL below points at Groq, whose free developer tier needs no
       # credit card and answers in seconds rather than minutes. Get a key at
       # https://console.groq.com/keys
+      #
+      # The `openai/` prefix on the model name is part of its ID on Groq, not
+      # a switch back to OpenAI the company. Hosted model names get retired on
+      # a schedule, so if AI requests start returning "model not found", check
+      # https://console.groq.com/docs/rate-limits and change OPENAI_MODEL —
+      # only models listed in that table have a free tier. Nothing else in the
+      # deployment is affected: analysis never goes near the model.
       - key: AI_ENABLED
         value: "false"
       - key: AI_PROVIDER
@@ -126,6 +133,6 @@ services:
       - key: OPENAI_BASE_URL
         value: https://api.groq.com/openai/v1
       - key: OPENAI_MODEL
-        value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-120b
       - key: OPENAI_API_KEY
         sync: false

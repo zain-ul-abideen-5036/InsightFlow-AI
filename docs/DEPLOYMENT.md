@@ -683,7 +683,7 @@ AI_ENABLED=true
 AI_PROVIDER=openai
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_API_KEY=gsk_...
-OPENAI_MODEL=llama-3.3-70b-versatile
+OPENAI_MODEL=openai/gpt-oss-120b
 ```
 
 `openai` names the wire protocol, not the vendor. The provider class speaks
