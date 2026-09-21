@@ -46,10 +46,19 @@ const UNPIN = `
   .capture-unpin header[class*="sticky"], .capture-unpin [class*="sticky"] { position: static !important; }
 `;
 
+/**
+ * The dev server's own build-status badge sits in the bottom-left corner and
+ * is not part of the product. Hiding it here rather than switching
+ * `devIndicators` off in next.config keeps a useful affordance for whoever is
+ * actually developing.
+ */
+const HIDE_DEV_BADGE = "nextjs-portal { display: none !important; }";
+
 async function shoot(page, name, { fullPage = false } = {}) {
   // Let fonts settle and chart entry animations finish, or captures taken
   // moments apart differ for no reason anyone cares about.
   await page.waitForLoadState("networkidle").catch(() => {});
+  await page.addStyleTag({ content: HIDE_DEV_BADGE }).catch(() => {});
   await page.waitForTimeout(1200);
 
   if (fullPage) {
