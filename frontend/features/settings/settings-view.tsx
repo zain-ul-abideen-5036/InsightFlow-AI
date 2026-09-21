@@ -4,6 +4,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Cpu, Lock, ShieldOff, XCircle } from "lucide-react";
 
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,13 +43,11 @@ export function SettingsView({
   aiStatus: AIStatus | null;
 }) {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-md text-muted-foreground">
-          Your workspace, your profile, and how the AI layer is configured.
-        </p>
-      </header>
+    <div className="mx-auto max-w-3xl space-y-7">
+      <PageHeader
+        title="Settings"
+        description="Your workspace, your profile, and exactly what the AI layer receives."
+      />
 
       <Tabs defaultValue="workspace">
         <TabsList>

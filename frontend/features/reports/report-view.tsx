@@ -45,8 +45,8 @@ export function ReportView({
   const section = (key: string) => report.sections.find((item) => item.key === key);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="no-print space-y-3">
+    <div className="mx-auto max-w-4xl space-y-7">
+      <div className="no-print">
         <Button variant="ghost" size="sm" asChild className="-ml-2">
           <Link href="/reports">
             <ArrowLeft aria-hidden="true" />
@@ -55,22 +55,36 @@ export function ReportView({
         </Button>
       </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-5">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{report.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            {report.period_label} · generated {formatDate(report.created_at, true)}
-          </p>
+      {/*
+        A title block, not a page header.
+
+        This artefact is the thing a business owner forwards to their board,
+        and it used to open exactly like every other application screen. It
+        now reads as a document: a masthead rule, the period as the subject,
+        and the provenance stated up front rather than buried at the end.
+      */}
+      <header className="border-y border-border py-6">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0 space-y-2">
+            <p className="eyebrow">Business performance report</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-balance">
+              {report.title}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {report.period_label} &middot; generated{" "}
+              {formatDate(report.created_at, true)}
+            </p>
+          </div>
+          <Button variant="outline" className="no-print" onClick={() => window.print()}>
+            <Printer aria-hidden="true" />
+            Print / Save as PDF
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="no-print"
-          onClick={() => window.print()}
-        >
-          <Printer aria-hidden="true" />
-          Print / Save as PDF
-        </Button>
+        <p className="mt-5 max-w-prose text-xs leading-relaxed text-subtle-foreground">
+          Every figure below was computed from your data at the moment this report was
+          generated and is fixed to it, so the numbers here will not move if the underlying
+          analysis is re-run.
+        </p>
       </header>
 
       <ExecutiveSummary section={section("summary")} />
@@ -87,9 +101,9 @@ export function ReportView({
 function ExecutiveSummary({ section }: { section?: ReportSection }) {
   if (!section?.body && !section?.key_points?.length) return null;
   return (
-    <Card className="print-break-inside-avoid">
+    <Card elevation="flat" className="print-break-inside-avoid">
       <CardHeader>
-        <CardTitle as="h2">{section.title}</CardTitle>
+        <CardTitle as="h2" className="text-lg">{section.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {section.body ? (
@@ -98,7 +112,7 @@ function ExecutiveSummary({ section }: { section?: ReportSection }) {
 
         {section.key_points?.length ? (
           <div className="space-y-2">
-            <h3 className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+            <h3 className="eyebrow">
               Key points
             </h3>
             <ul className="space-y-1.5">
@@ -113,8 +127,8 @@ function ExecutiveSummary({ section }: { section?: ReportSection }) {
         ) : null}
 
         {section.recommended_focus?.length ? (
-          <div className="space-y-2 rounded-md border border-border bg-surface px-4 py-3">
-            <h3 className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="space-y-2 rounded-xl border border-border bg-surface-sunken px-4 py-3.5">
+            <h3 className="eyebrow">
               Where to focus
             </h3>
             <ul className="space-y-1.5">
