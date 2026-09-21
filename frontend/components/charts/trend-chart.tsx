@@ -31,6 +31,7 @@ export function TrendChart({
   highlights = [],
   height = 300,
   description,
+  actions,
 }: {
   series: TimeSeries;
   currency?: string;
@@ -38,6 +39,8 @@ export function TrendChart({
   highlights?: { period: string; label: string }[];
   height?: number;
   description?: string;
+  /** Controls rendered beside the chart title, e.g. a metric switcher. */
+  actions?: React.ReactNode;
 }) {
   const data = React.useMemo(
     () =>
@@ -74,29 +77,30 @@ export function TrendChart({
       columns={["Period", series.metric_label]}
       rows={data.map((row) => [row.period, formatValue(row.value, series.unit, currency)])}
       height={height}
+      actions={actions}
     >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.22} />
+              <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.20} />
               <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="hsl(var(--border))"
+            stroke="hsl(var(--chart-grid))"
             vertical={false}
           />
           <XAxis
             dataKey="period"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11.5, fill: "hsl(var(--chart-axis))" }}
             tickLine={false}
-            axisLine={{ stroke: "hsl(var(--border))" }}
+            axisLine={{ stroke: "hsl(var(--chart-grid))" }}
             minTickGap={28}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11.5, fill: "hsl(var(--chart-axis))" }}
             tickLine={false}
             axisLine={false}
             width={62}
@@ -106,14 +110,14 @@ export function TrendChart({
           />
           <Tooltip
             content={<ChartTooltip unit={series.unit} currency={currency} />}
-            cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+            cursor={{ stroke: "hsl(var(--chart-axis))", strokeWidth: 1, strokeOpacity: 0.45 }}
           />
           <Area
             type="monotone"
             dataKey="value"
             name={series.metric_label}
             stroke="hsl(var(--chart-1))"
-            strokeWidth={2}
+            strokeWidth={2.25}
             fill="url(#trend-fill)"
             dot={false}
             activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--background))" }}

@@ -239,11 +239,20 @@
     font-feature-settings: "tnum", "cv02", "cv03", "cv04";
   }
 
+  /*
+   * Headings inherit their colour.
+   *
+   * This rule used to pin `text-foreground`, which is invisible the moment a
+   * heading sits inside an inverted section — the dashboard's closing call to
+   * action rendered near-black on near-black and simply was not there. The
+   * body sets the default colour and headings inherit it, so the declaration
+   * bought nothing and cost a whole class of silent failure.
+   */
   h1,
   h2,
   h3,
   h4 {
-    @apply font-semibold tracking-tight text-foreground;
+    @apply font-semibold tracking-tight;
     text-wrap: balance;
   }
 

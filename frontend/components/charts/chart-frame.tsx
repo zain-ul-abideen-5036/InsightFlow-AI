@@ -53,14 +53,14 @@ export function ChartFrame({
 
   return (
     <figure className={cn("space-y-3", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="space-y-0.5">
-          <figcaption className="text-sm font-medium">{title}</figcaption>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 space-y-0.5">
+          <figcaption className="text-base font-semibold tracking-tight">{title}</figcaption>
           {description ? (
             <p className="text-xs text-muted-foreground">{description}</p>
           ) : null}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           {actions}
           <Button
             variant="ghost"
@@ -79,7 +79,7 @@ export function ChartFrame({
       <p className="sr-only">{summary}</p>
 
       {showTable ? (
-        <div id={tableId} className="rounded-md border border-border">
+        <div id={tableId} className="overflow-hidden rounded-lg border border-border">
           <Table caption={`${title}. ${summary}`}>
             <TableHeader>
               <TableRow>

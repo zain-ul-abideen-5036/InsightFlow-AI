@@ -37,7 +37,7 @@ export function BreakdownChart({
   const rows = React.useMemo(
     () =>
       breakdown.rows.slice(0, limit).map((row) => ({
-        name: truncate(row.name, 28),
+        name: truncate(row.name, 20),
         fullName: row.name,
         value: row.value,
         share: row.share_pct,
@@ -67,14 +67,14 @@ export function BreakdownChart({
         formatValue(row.value, breakdown.unit, currency),
         `${row.share_pct.toFixed(1)}%`,
       ])}
-      height={height ?? Math.max(200, rows.length * 34 + 28)}
+      height={height ?? Math.max(200, rows.length * 36 + 30)}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+        <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--chart-grid))" horizontal={false} />
           <XAxis
             type="number"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11.5, fill: "hsl(var(--chart-axis))" }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(value: number) =>
@@ -84,10 +84,11 @@ export function BreakdownChart({
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11.5, fill: "hsl(var(--chart-axis))" }}
             tickLine={false}
             axisLine={false}
-            width={130}
+            width={148}
+            interval={0}
           />
           <Tooltip
             content={<ChartTooltip unit={breakdown.unit} currency={currency} />}

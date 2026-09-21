@@ -97,6 +97,8 @@ export function AppShell({
     if (!drawer) return;
 
     const opener = document.activeElement as HTMLElement | null;
+    // Captured now: by the time cleanup runs, the ref may point elsewhere.
+    const restoreTo = menuButtonRef.current ?? opener;
     const focusable = () =>
       Array.from(
         drawer.querySelectorAll<HTMLElement>(
@@ -137,7 +139,7 @@ export function AppShell({
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
       // Return focus to whatever opened it, not to the document body.
-      (menuButtonRef.current ?? opener)?.focus();
+      restoreTo?.focus();
     };
   }, [mobileOpen]);
 
@@ -374,13 +376,9 @@ export function AppShell({
             </span>
           </div>
 
+          {/* Ask lives in the sidebar and as each screen's own call to
+              action; a third copy here sat directly beside the second. */}
           <div className="ml-auto flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex" asChild>
-              <Link href="/ask">
-                <MessageSquareText aria-hidden="true" />
-                Ask InsightFlow
-              </Link>
-            </Button>
             <ThemeToggle />
           </div>
         </header>

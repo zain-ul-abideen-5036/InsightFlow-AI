@@ -1,56 +1,55 @@
 "use client";
 
 import * as React from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Info } from "lucide-react";
+import { Info } from "lucide-react";
 
+import { Delta } from "@/components/ui/delta";
+import { Sparkline } from "@/components/ui/sparkline";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn, formatChange, formatValue, isFavourable } from "@/lib/utils";
+import { cn, formatValue, isFavourable } from "@/lib/utils";
 import type { Metric } from "@/types/api";
 
 /**
  * A headline KPI.
  *
- * Three deliberate choices:
+ * Four things are deliberate.
  *
- * 1. The change is shown with an arrow *and* a sign, so direction survives
- *    without colour (WCAG 1.4.1).
- * 2. Green/red reflect whether the movement is *good*, not whether it is up —
- *    falling cost is good news and is coloured accordingly.
- * 3. Every card exposes how the figure was calculated. A number a business
+ * 1. **The figure is the largest thing on the card by a wide margin.** It was
+ *    previously 24px with an 11px label above it and 12px change below — three
+ *    sizes close enough that the card read as a paragraph rather than as a
+ *    number.
+ * 2. **A sparkline gives the number a shape.** A value and a percentage say
+ *    how far something moved; they do not say whether it was a step, a drift
+ *    or a spike, and those call for different reactions.
+ * 3. **Colour follows good news, not direction.** Falling cost is green.
+ *    `Delta` owns that rule so every change in the product obeys it.
+ * 4. **Every card exposes how the figure was calculated.** A number a business
  *    owner cannot interrogate is a number they cannot act on.
  */
 export function KpiCard({
   metric,
   currency = "USD",
   comparisonLabel,
+  history,
   onClick,
+  emphasis = "default",
 }: {
   metric: Metric;
   currency?: string;
   comparisonLabel?: string;
+  /** Recent values for this metric, oldest first. Drives the sparkline. */
+  history?: readonly number[];
   onClick?: () => void;
+  /** `quiet` is for the secondary strip below the four primary metrics. */
+  emphasis?: "default" | "quiet";
 }) {
   const favourable = isFavourable(metric.key, metric.change_pct);
-  const hasChange = metric.change_pct !== null && metric.change_pct !== undefined;
-
-  const ChangeIcon =
-    !hasChange || Math.abs(metric.change_pct ?? 0) < 0.5
-      ? ArrowRight
-      : (metric.change_pct ?? 0) > 0
-        ? ArrowUpRight
-        : ArrowDownRight;
-
-  const changeTone =
-    favourable === null
-      ? "text-muted-foreground"
-      : favourable
-        ? "text-success"
-        : "text-danger";
+  const quiet = emphasis === "quiet";
 
   const Wrapper = onClick ? "button" : "div";
 
@@ -58,30 +57,39 @@ export function KpiCard({
     <Wrapper
       {...(onClick ? { type: "button" as const, onClick } : {})}
       className={cn(
-        "group flex w-full flex-col gap-1.5 rounded-lg border border-border bg-card p-4 text-left",
-        "shadow-xs transition-shadow",
+        "group relative flex w-full flex-col overflow-hidden rounded-xl border border-border",
+        "bg-card text-left shadow-e1",
+        quiet ? "gap-1 p-3.5" : "gap-2 p-4",
         onClick &&
-          "cursor-pointer hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "cursor-pointer transition-[box-shadow,border-color,transform] duration-base ease-out " +
+            "hover:-translate-y-px hover:border-border-strong hover:shadow-e2 " +
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
     >
       <div className="flex items-center gap-1.5">
-        <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
-          {metric.label}
-        </span>
+        <span className="eyebrow truncate">{metric.label}</span>
         {metric.provenance?.calculation ? (
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span
-                  className="inline-flex cursor-help text-muted-foreground/60 transition-colors hover:text-muted-foreground"
-                  tabIndex={0}
-                  role="button"
+                {/*
+                  A real <button>. This was a <span role="button" tabIndex={0}>
+                  with no key handler: focusable, announced as a button, and
+                  impossible to operate from the keyboard.
+                */}
+                <button
+                  type="button"
+                  className={cn(
+                    "-m-1 inline-flex shrink-0 rounded-md p-1 text-subtle-foreground/70",
+                    "transition-colors hover:text-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  )}
                   aria-label={`How ${metric.label} is calculated`}
                 >
                   <Info className="size-3" aria-hidden="true" />
-                </span>
+                </button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className="max-w-xs">
                 <p className="font-medium">How this is calculated</p>
                 <p className="mt-0.5 text-muted-foreground">{metric.provenance.calculation}</p>
                 {metric.provenance.rows_used ? (
@@ -95,33 +103,48 @@ export function KpiCard({
         ) : null}
       </div>
 
-      <div className="tabular text-2xl font-semibold leading-none tracking-tight">
-        {formatValue(metric.value, metric.unit, currency, { compact: true })}
+      <div className="flex items-end justify-between gap-3">
+        <div
+          className={cn(
+            "tabular font-semibold leading-none",
+            quiet ? "text-metric-sm" : "text-metric",
+          )}
+        >
+          {formatValue(metric.value, metric.unit, currency, { compact: true })}
+        </div>
+
+        {history && history.length > 2 ? (
+          <Sparkline
+            values={history}
+            tone={favourable === null ? "neutral" : favourable ? "positive" : "negative"}
+            width={quiet ? 56 : 76}
+            height={quiet ? 20 : 26}
+            className="mb-0.5 shrink-0"
+          />
+        ) : null}
       </div>
 
-      {hasChange ? (
-        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-          <span className={cn("inline-flex items-center gap-0.5 text-xs font-medium", changeTone)}>
-            <ChangeIcon className="size-3" aria-hidden="true" />
-            <span className="tabular">{formatChange(metric.change_pct)}</span>
-          </span>
-          {comparisonLabel ? (
-            <span className="text-2xs text-muted-foreground">vs {comparisonLabel}</span>
-          ) : null}
-        </div>
-      ) : (
-        <p className="text-2xs text-muted-foreground">No comparison period available</p>
-      )}
+      <Delta
+        value={metric.change_pct}
+        metricKey={metric.key}
+        comparisonLabel={comparisonLabel}
+        size={quiet ? "sm" : "default"}
+      />
     </Wrapper>
   );
 }
 
-export function KpiCardSkeleton() {
+export function KpiCardSkeleton({ quiet = false }: { quiet?: boolean }) {
   return (
-    <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-card p-4">
-      <div className="shimmer h-3 w-20 rounded" />
-      <div className="shimmer h-7 w-28 rounded" />
-      <div className="shimmer h-3 w-24 rounded" />
+    <div
+      className={cn(
+        "flex flex-col gap-2.5 rounded-xl border border-border bg-card",
+        quiet ? "p-3.5" : "p-4",
+      )}
+    >
+      <div className="shimmer h-3 w-20" />
+      <div className="shimmer h-7 w-28" />
+      <div className="shimmer h-3 w-24" />
     </div>
   );
 }

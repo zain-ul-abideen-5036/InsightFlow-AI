@@ -41,8 +41,16 @@ const badgeVariants = cva(
         default: "px-2 py-0.5 text-2xs",
         lg: "rounded-lg px-2.5 py-1 text-xs",
       },
-      /** Capitalise the first letter of API-sourced vocabulary. */
-      sentence: { true: "first-letter:uppercase", false: "" },
+      /**
+       * Capitalise API-sourced vocabulary.
+       *
+       * `capitalize` rather than `first-letter:uppercase` because ::first-letter
+       * only applies to block containers and a badge is an inline-flex box, so
+       * the pseudo-element never matched and the rule did nothing. That limits
+       * this to single-token vocabulary — severities, statuses, kinds — which
+       * is the whole of what it is for.
+       */
+      sentence: { true: "capitalize", false: "" },
     },
     defaultVariants: { variant: "neutral", size: "default", sentence: false },
   },

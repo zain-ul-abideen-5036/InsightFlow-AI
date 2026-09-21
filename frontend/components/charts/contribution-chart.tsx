@@ -44,7 +44,7 @@ export function ContributionChart({
         .filter((row) => row.change !== null)
         .slice(0, limit)
         .map((row) => ({
-          name: truncate(row.name, 26),
+          name: truncate(row.name, 20),
           fullName: row.name,
           change: row.change ?? 0,
           contribution: row.contribution_pct,
@@ -84,14 +84,14 @@ export function ContributionChart({
           ? `${row.contribution.toFixed(1)}%`
           : "—",
       ])}
-      height={Math.max(200, rows.length * 34 + 28)}
+      height={Math.max(200, rows.length * 36 + 30)}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+        <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--chart-grid))" horizontal={false} />
           <XAxis
             type="number"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11.5, fill: "hsl(var(--chart-axis))" }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(value: number) =>
@@ -101,16 +101,17 @@ export function ContributionChart({
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11.5, fill: "hsl(var(--chart-axis))" }}
             tickLine={false}
             axisLine={false}
-            width={130}
+            width={148}
+            interval={0}
           />
           <Tooltip
             content={<ChartTooltip unit={breakdown.unit} currency={currency} />}
             cursor={{ fill: "hsl(var(--muted))", fillOpacity: 0.5 }}
           />
-          <ReferenceLine x={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
+          <ReferenceLine x={0} stroke="hsl(var(--chart-axis))" strokeWidth={1.25} strokeOpacity={0.6} />
           <Bar dataKey="change" name="Change" radius={3} barSize={18}>
             {rows.map((row) => (
               <Cell

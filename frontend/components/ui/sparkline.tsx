@@ -33,9 +33,11 @@ export function Sparkline({
     () => values.filter((value) => Number.isFinite(value)),
     [values],
   );
+  const gradientId = React.useId();
 
   // Two points is the minimum that can describe a shape; one is a dot, and a
-  // dot presented as a trend is a small lie.
+  // dot presented as a trend is a small lie. This sits below every hook, so
+  // the early return cannot change the hook order between renders.
   if (points.length < 2) return null;
 
   const stroke = {
@@ -60,7 +62,6 @@ export function Sparkline({
 
   const lastX = x(points.length - 1);
   const lastY = y(points[points.length - 1]!);
-  const gradientId = React.useId();
 
   return (
     <svg
