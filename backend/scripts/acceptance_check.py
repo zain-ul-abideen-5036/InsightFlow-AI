@@ -44,7 +44,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--frontend", default="http://localhost:3000")
     parser.add_argument("--backend", default="http://localhost:8000")
-    parser.add_argument("--timeout", type=float, default=180.0)
+    # Must exceed the backend's own AI_TIMEOUT_SECONDS (180 by default), and
+    # by a wide margin. A client that gives up at the same moment the server
+    # does can never observe the server's graceful timeout path — it just sees
+    # a read timeout and the run dies mid-journey, which is a fault in the
+    # harness rather than in the product. Answering a question is also two
+    # model calls, not one, so a single request can legitimately run past any
+    # per-call budget: 184s measured here, 333s on a busier machine. The
+    # default is the value this suite is actually verified against.
+    parser.add_argument("--timeout", type=float, default=600.0)
     args = parser.parse_args()
 
     frontend = args.frontend.rstrip("/")

@@ -135,7 +135,14 @@ test.describe("authentication", () => {
 
 test.describe("full journey", () => {
   test("signup through analysis, insights, question, and report", async ({ page }) => {
-    test.slow();
+    // This is one continuous session on purpose — it is the journey, not a set
+    // of independent checks — so every slow step runs back to back. Against a
+    // local 3B model on CPU that is minutes, not seconds: an investigation
+    // measured at 100s and a question at 333s in one run on a developer
+    // machine. `test.slow()` only triples the 120s default, which is not
+    // enough, so the budget is stated outright. A hosted provider returns in
+    // seconds and never approaches this.
+    test.setTimeout(900_000);
 
     await signUp(page);
     await expect(
@@ -190,8 +197,10 @@ test.describe("full journey", () => {
     await page.getByLabel("Your question").fill("Why did revenue decline?");
     await page.getByRole("button", { name: "Ask" }).click();
 
-    // Generous: local CPU inference can take a couple of minutes.
-    await expect(page.getByText(/Confidence:/i).first()).toBeVisible({ timeout: 240_000 });
+    // Answering a question is two model calls, not one: the plan, then the
+    // prose. On CPU that pair was measured at 333s, so 240s was cutting into
+    // a request that was still working correctly.
+    await expect(page.getByText(/Confidence:/i).first()).toBeVisible({ timeout: 480_000 });
     await expect(page.getByRole("button", { name: /View evidence/i }).first()).toBeVisible();
 
     // --- report -----------------------------------------------------------
