@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lightbulb, Upload } from "lucide-react";
 
+import { PageHeader, SectionHeading } from "@/components/page-header";
 import { EmptyState } from "@/components/states/empty-state";
 import { Button } from "@/components/ui/button";
+import { Segmented, type SegmentOption } from "@/components/ui/segmented";
 import {
   Select,
   SelectContent,
@@ -18,9 +20,8 @@ import { useToast } from "@/components/ui/toast";
 import { InsightCard } from "@/features/insights/insight-card";
 import { api, ClientApiError, queryKeys } from "@/lib/api-client";
 import { severityRank } from "@/lib/utils";
-import type { Insight, Page } from "@/types/api";
+import type { Insight, Page, Severity } from "@/types/api";
 
-const SEVERITIES = ["all", "critical", "high", "medium", "low", "info"] as const;
 const KINDS = [
   "all",
   "trend",
@@ -33,6 +34,32 @@ const KINDS = [
   "concentration",
   "data_quality",
 ] as const;
+
+/**
+ * Severity bands, with the heading each gets when it has members.
+ *
+ * The page previously rendered fourteen identical cards in a two-column grid
+ * and claimed in its own subtitle that they were "ranked by how much it
+ * matters". Nothing in the design expressed that ranking: a Critical card and
+ * an Info card differed by a badge and a 3px rail.
+ */
+const BANDS: { key: Severity[]; title: string; hint: string }[] = [
+  {
+    key: ["critical", "high"],
+    title: "Act on these",
+    hint: "The largest movements, and the ones accounting for most of the overall change.",
+  },
+  {
+    key: ["medium"],
+    title: "Worth knowing",
+    hint: "Real movements, smaller in impact.",
+  },
+  {
+    key: ["low", "info"],
+    title: "Context",
+    hint: "Background findings about the shape of your data rather than about a change in it.",
+  },
+];
 
 export function InsightsView({
   workspaceId,
@@ -77,8 +104,7 @@ export function InsightsView({
         .filter((insight) => kind === "all" || insight.kind === kind)
         // Most urgent first; ties broken by the engine's own score.
         .sort(
-          (a, b) =>
-            severityRank(a.severity) - severityRank(b.severity) || b.score - a.score,
+          (a, b) => severityRank(a.severity) - severityRank(b.severity) || b.score - a.score,
         ),
     [all, severity, kind],
   );
@@ -91,14 +117,54 @@ export function InsightsView({
     return result;
   }, [all]);
 
+  /**
+   * Filter chips, not a dropdown.
+   *
+   * A `<select>` hides the range of what is available behind a click, which
+   * on a filter means you cannot see the shape of your own results until
+   * after you have narrowed them. The counts are the point.
+   */
+  const severityOptions: SegmentOption<string>[] = React.useMemo(() => {
+    const options: SegmentOption<string>[] = [
+      { value: "all", label: "All", count: all.length },
+    ];
+    for (const level of ["critical", "high", "medium", "low", "info"] as const) {
+      if (counts[level]) {
+        options.push({
+          value: level,
+          label: `${level[0]!.toUpperCase()}${level.slice(1)}`,
+          count: counts[level],
+        });
+      }
+    }
+    return options;
+  }, [all.length, counts]);
+
+  /** Only render a band heading where the band has members. */
+  const bands = React.useMemo(
+    () =>
+      BANDS.map((band) => ({
+        ...band,
+        items: visible.filter((insight) => band.key.includes(insight.severity)),
+      })).filter((band) => band.items.length > 0),
+    [visible],
+  );
+
+  const filtered = severity !== "all" || kind !== "all";
+
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Insights</h1>
-        <p className="text-md text-muted-foreground">
-          What changed in your business, ranked by how much it matters.
-        </p>
-      </header>
+    <div className="space-y-7">
+      <PageHeader
+        title="Insights"
+        description="What changed in your business, ranked by how much of the overall movement each finding accounts for."
+        meta={
+          all.length ? (
+            <span aria-live="polite">
+              Showing {visible.length} of {all.length}
+            </span>
+          ) : null
+        }
+      />
 
       {all.length === 0 ? (
         <EmptyState
@@ -106,7 +172,7 @@ export function InsightsView({
           title="No insights yet"
           description="Insights appear after your first analysis. Each one describes something that moved materially, with the figures behind it — so a very short or very stable dataset may not produce any."
           action={
-            <Button asChild>
+            <Button size="lg" asChild>
               <Link href="/datasets/new">
                 <Upload aria-hidden="true" />
                 Upload data
@@ -117,34 +183,19 @@ export function InsightsView({
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label htmlFor="severity-filter" className="text-xs text-muted-foreground">
-                Severity
-              </label>
-              <Select value={severity} onValueChange={setSeverity}>
-                <SelectTrigger id="severity-filter" className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEVERITIES.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option === "all"
-                        ? `All (${all.length})`
-                        : `${option[0]!.toUpperCase()}${option.slice(1)}${
-                            counts[option] ? ` (${counts[option]})` : ""
-                          }`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Segmented
+              label="Filter by severity"
+              options={severityOptions}
+              value={severity}
+              onChange={setSeverity}
+            />
 
             <div className="flex items-center gap-2">
-              <label htmlFor="kind-filter" className="text-xs text-muted-foreground">
-                Type
+              <label htmlFor="kind-filter" className="sr-only">
+                Filter by type
               </label>
               <Select value={kind} onValueChange={setKind}>
-                <SelectTrigger id="kind-filter" className="w-44">
+                <SelectTrigger id="kind-filter" className="h-9 w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -157,21 +208,30 @@ export function InsightsView({
               </Select>
             </div>
 
-            <p className="ml-auto text-xs text-muted-foreground" aria-live="polite">
-              Showing {visible.length} of {all.length}
-            </p>
+            {filtered ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSeverity("all");
+                  setKind("all");
+                }}
+              >
+                Clear filters
+              </Button>
+            ) : null}
           </div>
 
           {visible.length === 0 ? (
             <EmptyState
               compact
+              align="start"
               icon={Lightbulb}
               title="Nothing matches those filters"
               description="Try widening the severity or type filter to see the rest of the insights from this analysis."
               action={
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => {
                     setSeverity("all");
                     setKind("all");
@@ -182,14 +242,51 @@ export function InsightsView({
               }
             />
           ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {visible.map((insight) => (
-                <InsightCard
-                  key={insight.id}
-                  insight={insight}
-                  currency={currency}
-                  onDismiss={(id) => dismiss.mutate(id)}
-                />
+            <div className="space-y-9">
+              {bands.map((band, bandIndex) => (
+                <section key={band.title} className="space-y-4">
+                  <SectionHeading
+                    title={band.title}
+                    hint={band.hint}
+                    count={band.items.length}
+                  />
+                  {/* The single most important finding, in the most important
+                      band, is given real prominence. Everything else keeps
+                      the compact two-column treatment. */}
+                  {bandIndex === 0 && !filtered ? (
+                    <div className="space-y-3">
+                      <InsightCard
+                        insight={band.items[0]!}
+                        currency={currency}
+                        onDismiss={(id) => dismiss.mutate(id)}
+                        featured
+                      />
+                      {band.items.length > 1 ? (
+                        <div className="grid gap-3 lg:grid-cols-2">
+                          {band.items.slice(1).map((insight) => (
+                            <InsightCard
+                              key={insight.id}
+                              insight={insight}
+                              currency={currency}
+                              onDismiss={(id) => dismiss.mutate(id)}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {band.items.map((insight) => (
+                        <InsightCard
+                          key={insight.id}
+                          insight={insight}
+                          currency={currency}
+                          onDismiss={(id) => dismiss.mutate(id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
               ))}
             </div>
           )}

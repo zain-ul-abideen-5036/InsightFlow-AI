@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ShieldCheck, Upload } from "lucide-react";
 
+import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states/empty-state";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Segmented, type SegmentOption } from "@/components/ui/segmented";
 import {
   Select,
   SelectContent,
@@ -17,10 +19,8 @@ import {
 } from "@/components/ui/select";
 import { AnomalyRow } from "@/features/anomalies/anomaly-row";
 import { api, queryKeys } from "@/lib/api-client";
-import { severityRank } from "@/lib/utils";
+import { cn, severityRank } from "@/lib/utils";
 import type { Anomaly, Page } from "@/types/api";
-
-const SEVERITIES = ["all", "critical", "high", "medium", "low"] as const;
 
 export function AnomaliesView({
   workspaceId,
@@ -58,14 +58,55 @@ export function AnomaliesView({
   const drops = all.filter((item) => item.direction === "down").length;
   const spikes = all.filter((item) => item.direction === "up").length;
 
+  const counts = React.useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const item of all) result[item.severity] = (result[item.severity] ?? 0) + 1;
+    return result;
+  }, [all]);
+
+  /**
+   * Chips, so the shape of the results is visible before filtering.
+   *
+   * A select hides the range of what is available behind a click, which on
+   * a filter means you cannot see how your results are distributed until
+   * after you have narrowed them. The counts are the point.
+   */
+  const severityOptions: SegmentOption<string>[] = React.useMemo(() => {
+    const options: SegmentOption<string>[] = [
+      { value: "all", label: "All", count: all.length },
+    ];
+    for (const level of ["critical", "high", "medium", "low"] as const) {
+      if (counts[level]) {
+        options.push({
+          value: level,
+          label: `${level[0]!.toUpperCase()}${level.slice(1)}`,
+          count: counts[level],
+        });
+      }
+    }
+    return options;
+  }, [all.length, counts]);
+
+  // Deviation bars scale against the worst on the page, so comparing two
+  // rows by eye means something.
+  const worstDeviation = React.useMemo(
+    () => Math.max(1, ...visible.map((item) => Math.abs(item.deviation_pct))),
+    [visible],
+  );
+
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Anomalies</h1>
-        <p className="text-md text-muted-foreground">
-          Periods that fall outside what the rest of your data would predict.
-        </p>
-      </header>
+    <div className="space-y-7">
+      <PageHeader
+        title="Anomalies"
+        description="Periods that fall outside what the rest of your data would predict. These are separate from the movements on Insights: an anomaly is a period behaving unlike its neighbours, not a segment that grew or shrank."
+        meta={
+          all.length ? (
+            <span aria-live="polite">
+              Showing {visible.length} of {all.length}
+            </span>
+          ) : null
+        }
+      />
 
       {all.length === 0 ? (
         <EmptyState
@@ -85,44 +126,41 @@ export function AnomaliesView({
         <>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Total detected", value: all.length },
-              { label: "Below expected", value: drops },
-              { label: "Above expected", value: spikes },
+              { label: "Total detected", value: all.length, tone: "" },
+              { label: "Below expected", value: drops, tone: "text-danger" },
+              { label: "Above expected", value: spikes, tone: "text-info" },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-lg border border-border bg-card p-4">
-                <p className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {stat.label}
+              <div
+                key={stat.label}
+                className="rounded-xl border border-border bg-card p-4 shadow-e1"
+              >
+                <p className="eyebrow">{stat.label}</p>
+                <p
+                  className={cn(
+                    "tabular mt-1.5 text-metric-sm font-semibold",
+                    stat.tone,
+                  )}
+                >
+                  {stat.value}
                 </p>
-                <p className="tabular mt-1 text-xl font-semibold">{stat.value}</p>
               </div>
             ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label htmlFor="anomaly-severity" className="text-xs text-muted-foreground">
-                Severity
-              </label>
-              <Select value={severity} onValueChange={setSeverity}>
-                <SelectTrigger id="anomaly-severity" className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEVERITIES.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option === "all" ? "All severities" : option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Segmented
+              label="Filter by severity"
+              options={severityOptions}
+              value={severity}
+              onChange={setSeverity}
+            />
 
             <div className="flex items-center gap-2">
-              <label htmlFor="anomaly-direction" className="text-xs text-muted-foreground">
-                Direction
+              <label htmlFor="anomaly-direction" className="sr-only">
+                Filter by direction
               </label>
               <Select value={direction} onValueChange={setDirection}>
-                <SelectTrigger id="anomaly-direction" className="w-44">
+                <SelectTrigger id="anomaly-direction" className="h-9 w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -133,14 +171,24 @@ export function AnomaliesView({
               </Select>
             </div>
 
-            <p className="ml-auto text-xs text-muted-foreground" aria-live="polite">
-              Showing {visible.length} of {all.length}
-            </p>
+            {severity !== "all" || direction !== "all" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSeverity("all");
+                  setDirection("all");
+                }}
+              >
+                Clear filters
+              </Button>
+            ) : null}
           </div>
 
           {visible.length === 0 ? (
             <EmptyState
               compact
+              align="start"
               icon={AlertTriangle}
               title="Nothing matches those filters"
               description="Widen the severity or direction filter to see the rest."
@@ -158,16 +206,18 @@ export function AnomaliesView({
               }
             />
           ) : (
-            <Card>
-              <CardContent className="pt-2">
-                <ul className="divide-y divide-border">
-                  {visible.map((anomaly) => (
-                    <li key={anomaly.id}>
-                      <AnomalyRow anomaly={anomaly} currency={currency} />
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
+            <Card elevation="flat">
+              <ul className="divide-y divide-border">
+                {visible.map((anomaly) => (
+                  <li key={anomaly.id}>
+                    <AnomalyRow
+                      anomaly={anomaly}
+                      currency={currency}
+                      maxDeviation={worstDeviation}
+                    />
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
         </>
