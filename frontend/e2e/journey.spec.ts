@@ -226,7 +226,17 @@ test.describe("full journey", () => {
     const investigate = page.getByRole("link", { name: /Investigate/i }).first();
     if (await investigate.isVisible()) {
       await investigate.click();
-      await expect(page.getByRole("heading", { name: "Investigation" })).toBeVisible();
+      // The same 90 seconds the assertion below already allows, for the same
+      // reason: this heading does not appear until the server has finished
+      // rendering the page, and rendering it recomputes the investigation in
+      // pandas. Fifteen seconds — the default — is enough on an idle machine
+      // and not enough on a busy one, which made this the one step in the
+      // journey that failed for a reason having nothing to do with the
+      // product. The page is allowed to be slow here; it is not allowed to be
+      // wrong, and every assertion about what it says is unchanged.
+      await expect(page.getByRole("heading", { name: "Investigation" })).toBeVisible({
+        timeout: 90_000,
+      });
       await expect(page.getByText(/What happened/i).first()).toBeVisible({
         timeout: 90_000,
       });
