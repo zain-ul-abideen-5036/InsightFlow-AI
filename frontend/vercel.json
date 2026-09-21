@@ -9,10 +9,5 @@
       "source": "/api/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     }
-  ],
-  "functions": {
-    "app/api/backend/[...path]/route.ts": {
-      "maxDuration": 60
-    }
-  }
+  ]
 }

@@ -32,6 +32,21 @@ const HOP_BY_HOP = new Set([
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
+/**
+ * Vercel terminates a function at this many seconds; Hobby allows 300, which is
+ * both its default and its ceiling. It is set explicitly because the number is
+ * load-bearing and has to be read against the backend's own budget:
+ *
+ *   AI_REQUEST_BUDGET_SECONDS (240)  <  this (300)  ==  Node's header timeout
+ *
+ * The ordering is the whole point. The backend gives up first and returns its
+ * deterministic answer — a designed, tested path that tells the truth — instead
+ * of the platform killing the request and the user being told the service is
+ * unreachable while it was in fact answering them. Lowering this below 240
+ * inverts that ordering and makes the platform the first thing to fail.
+ */
+export const maxDuration = 300;
+
 
 async function proxy(
   request: Request,
