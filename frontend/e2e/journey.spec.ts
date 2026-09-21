@@ -69,6 +69,16 @@ test.describe("landing page", () => {
   });
 
   test("offers a way in that needs no account", async ({ page }) => {
+    // The demo generates a dataset, ingests it, profiles it, and analyses
+    // fourteen thousand rows before the dashboard has anything to show.
+    //
+    // A test's own timeout has to exceed everything it waits for inside, or
+    // those waits can never reach their limit and the run fails reporting the
+    // wrong deadline — which is what the default 120s did here. The waits
+    // below add up to 300s, so this leaves headroom rather than matching them
+    // exactly. It typically finishes in about 50.
+    test.setTimeout(360_000);
+
     await page.goto("/");
 
     await page.getByRole("link", { name: /Explore the live demo/i }).first().click();
@@ -138,11 +148,14 @@ test.describe("full journey", () => {
     // This is one continuous session on purpose — it is the journey, not a set
     // of independent checks — so every slow step runs back to back. Against a
     // local 3B model on CPU that is minutes, not seconds: an investigation
-    // measured at 100s and a question at 333s in one run on a developer
-    // machine. `test.slow()` only triples the 120s default, which is not
-    // enough, so the budget is stated outright. A hosted provider returns in
-    // seconds and never approaches this.
-    test.setTimeout(900_000);
+    // measured at 97s and a question at 246s on a developer machine.
+    //
+    // `test.slow()` only triples the 120s default, which does not cover that.
+    // The budget is stated outright instead, and set above the sum of every
+    // wait inside (930s) so each one can actually reach its own limit rather
+    // than being cut short by this one. A hosted provider returns in seconds
+    // and never approaches any of it.
+    test.setTimeout(1_200_000);
 
     await signUp(page);
     await expect(
