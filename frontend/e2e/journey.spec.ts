@@ -64,7 +64,10 @@ test.describe("landing page", () => {
     // The same primary call to action appears in the hero and again in the
     // closing section, which is deliberate — a reader who scrolls the whole
     // page should not have to scroll back. `.first()` picks the hero one.
-    await page.getByRole("link", { name: /Analyze your data/i }).first().click();
+    //
+    // "Analyse", not "Analyze": the product had both spellings for the same
+    // action, and one vocabulary is now enforced across the interface.
+    await page.getByRole("link", { name: /Analyse your data/i }).first().click();
     await expect(page).toHaveURL(/\/signup/);
   });
 
@@ -81,7 +84,7 @@ test.describe("landing page", () => {
 
     await page.goto("/");
 
-    await page.getByRole("link", { name: /Explore the live demo/i }).first().click();
+    await page.getByRole("link", { name: /See how it works/i }).first().click();
     await expect(page).toHaveURL(/\/demo/);
 
     // The demo page must say what it is doing rather than show a bare spinner:
@@ -95,14 +98,21 @@ test.describe("landing page", () => {
 
     // Either state is correct here: the analysis may still be running, and the
     // dashboard must say so rather than tell the visitor to go and start one.
+    //
+    // The finished dashboard's h1 is the greeting — it leads with what
+    // happened rather than with the navigation label "Overview", which said
+    // nothing a visitor did not already know from the sidebar.
     await expect(
-      page.getByRole("heading", { name: /^(Overview|Analysing your data)$/, level: 1 }),
+      page.getByRole("heading", {
+        name: /(Here's what changed|Analysing your data)/,
+        level: 1,
+      }),
     ).toBeVisible();
 
     // Whichever it was, it must finish without the visitor doing anything.
-    await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible({
-      timeout: 180_000,
-    });
+    await expect(
+      page.getByRole("heading", { name: /Here's what changed/, level: 1 }),
+    ).toBeVisible({ timeout: 180_000 });
     await expect(page.getByText(/Revenue/i).first()).toBeVisible();
   });
 
@@ -168,9 +178,17 @@ test.describe("full journey", () => {
     await page.getByRole("link", { name: "View dashboard" }).click();
     await page.waitForURL("**/overview");
 
-    await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Here's what changed/, level: 1 }),
+    ).toBeVisible();
     await expect(page.getByText("Revenue").first()).toBeVisible();
     await expect(page.getByText(/Revenue (fell|rose)/i).first()).toBeVisible();
+
+    // The two concepts must stay separate: movements the analysis ranked, and
+    // periods that fall outside prediction. They were previously the same
+    // records rendered twice under two different names.
+    await expect(page.getByRole("heading", { name: /What changed/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Needs attention/ })).toBeVisible();
     // The headline figure must be traceable, not just present.
     await expect(
       page.getByRole("button", { name: /How Revenue is calculated/i }).first(),
