@@ -137,7 +137,8 @@ jobs:
           AI_ENABLED: "false"
           AI_PROVIDER: none
         run: |
-          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          # Logged to a file so a failed run can be diagnosed from its artifact.
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
           for _ in $(seq 1 60); do
             curl -sf http://127.0.0.1:8000/api/v1/health && break
             sleep 1
@@ -149,7 +150,7 @@ jobs:
           BACKEND_API_URL: http://127.0.0.1:8000
         run: |
           npm run build
-          npx next start -p 3000 &
+          npx next start -p 3000 > next.log 2>&1 &
           for _ in $(seq 1 60); do
             curl -sf http://127.0.0.1:3000/ && break
             sleep 1
@@ -165,12 +166,18 @@ jobs:
           npx playwright install --with-deps chromium
           npx playwright test --project=chromium
 
-      - name: Upload Playwright report on failure
+      # CI uses the list reporter, so there is no HTML report to keep. The
+      # traces, failure screenshots and both server logs are what explain a
+      # failure, and they are lost with the runner unless uploaded here.
+      - name: Upload test evidence on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: frontend/playwright-report
+          name: e2e-evidence
+          path: |
+            frontend/test-results
+            frontend/next.log
+            backend/uvicorn.log
           retention-days: 7
 
   security:
