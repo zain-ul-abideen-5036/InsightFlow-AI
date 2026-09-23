@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 
 import { Providers } from "@/app/providers";
 import { SITE_URL } from "@/lib/site";
@@ -15,14 +15,13 @@ const inter = Inter({
 /**
  * The display face, for marketing headlines only.
  *
- * Inter carries the product; a single serif at display sizes gives the public
- * pages an editorial voice without touching the density of the application.
- * One weight, roman and italic — the italic is the accent, not a second colour.
+ * Inter Tight is Inter's display cut: the same skeleton with spacing drawn for
+ * large sizes, so a 72px headline sits tight without fighting the body text
+ * set in Inter beside it. The application never uses it.
  */
-const display = Instrument_Serif({
+const display = Inter_Tight({
   subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
+  weight: ["500", "600"],
   variable: "--font-display",
   display: "swap",
 });

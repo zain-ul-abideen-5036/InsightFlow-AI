@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -28,13 +27,21 @@ const SOURCE_URL =
   process.env.NEXT_PUBLIC_SOURCE_URL ??
   "https://github.com/zain-ul-abideen-5036/InsightFlow-AI";
 
+/**
+ * The public pages are dark by design, whatever the visitor's theme.
+ *
+ * The `dark` class on this wrapper re-points every token beneath it at the
+ * dark palette, so the landing page is one considered composition rather
+ * than two half-tuned ones. The application itself keeps the visitor's
+ * chosen theme; this wrapper does not reach it.
+ */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="dark flex min-h-dvh flex-col bg-background text-foreground [color-scheme:dark]">
       {/* A floating bar rather than a full-width strip: it sits inside the
           container, so the page reads edge to edge beneath it. */}
       <header className="sticky top-0 z-40 px-3 pt-3 sm:px-4">
-        <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between gap-4 rounded-2xl border border-border/80 bg-background/70 pl-4 pr-2 shadow-e2 backdrop-blur-xl backdrop-saturate-150">
+        <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-background/60 pl-4 pr-2 shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.05),0_16px_40px_-20px_hsl(0_0%_0%/0.8)] backdrop-blur-xl backdrop-saturate-150">
           <Link
             href="/"
             aria-label="InsightFlow AI home"
@@ -48,7 +55,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               <Link
                 key={href}
                 href={href}
-                className="rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground"
+                className="rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors duration-fast hover:bg-white/[0.06] hover:text-foreground"
               >
                 {label}
               </Link>
@@ -56,11 +63,19 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           </nav>
 
           <div className="flex items-center gap-1.5">
-            <ThemeToggle />
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="hidden rounded-full hover:bg-white/[0.06] sm:inline-flex"
+            >
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button size="sm" variant="inverse" asChild className="rounded-xl px-4">
+            <Button
+              size="sm"
+              asChild
+              className="rounded-full bg-foreground px-4 text-background hover:bg-foreground/90 active:bg-foreground/85"
+            >
               <Link href="/signup">Try InsightFlow</Link>
             </Button>
           </div>
@@ -71,7 +86,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      <footer className="overflow-hidden border-t border-border bg-surface-sunken/70 pt-16">
+      <footer className="relative overflow-hidden border-t border-white/[0.06] pt-16">
         <div className="container">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <div className="space-y-3.5">
@@ -111,7 +126,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          <div className="mt-14 border-t border-border py-6">
+          <div className="mt-14 border-t border-white/[0.06] py-6">
             <p className="text-center text-2xs leading-relaxed text-subtle-foreground">
               &copy; {new Date().getFullYear()} InsightFlow AI. Every figure shown on this
               site comes from the included NovaMart sample dataset, which is generated
@@ -124,7 +139,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         {/* The name, set once at poster scale and cropped by the page edge. */}
         <p
           aria-hidden="true"
-          className="display pointer-events-none -mb-[0.22em] select-none text-center text-[21vw] leading-none text-foreground/[0.06]"
+          className="display pointer-events-none -mb-[0.2em] select-none bg-gradient-to-b from-white/[0.07] to-transparent bg-clip-text text-center text-[19vw] leading-none text-transparent"
         >
           InsightFlow
         </p>

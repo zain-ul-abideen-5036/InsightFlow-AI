@@ -353,65 +353,167 @@
     );
   }
 
-  /**
-   * Marketing display type.
+  /* ================================================================
+   * Marketing surfaces.
    *
-   * The serif is set tight and large; below ~28px it loses its contrast and
-   * should not be used. The italic is the only emphasis the headlines use.
-   */
+   * The public pages render inside a `.dark` wrapper, so every rule below
+   * is written against the dark tokens. None of it is used by the app.
+   * ================================================================ */
+
+  /** Display headlines: Inter Tight, tight tracking that scales with size. */
   .display {
-    @apply font-display font-normal;
-    letter-spacing: -0.006em;
-    line-height: 1;
-  }
-  .display em {
-    @apply font-display italic;
+    @apply font-display font-semibold;
+    letter-spacing: -0.038em;
+    line-height: 1.04;
   }
 
-  /** A section index — "01 · The problem" — in the mono face. */
-  .kicker {
-    @apply inline-flex items-center gap-2.5 font-mono text-[11px] font-medium uppercase
-           tracking-[0.16em] text-subtle-foreground;
+  /** Headline ink that fades from full to muted, top-left to bottom-right. */
+  .text-ink {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      180deg,
+      hsl(var(--foreground)) 40%,
+      hsl(var(--foreground) / 0.72)
+    );
   }
-  .kicker::before {
-    @apply h-px w-6 bg-border-strong;
+  .text-ink-muted {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      180deg,
+      hsl(var(--foreground) / 0.62),
+      hsl(var(--foreground) / 0.38)
+    );
+  }
+
+  /** A small pill that labels a section. */
+  .eyebrow-pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/[0.08]
+           bg-white/[0.03] px-3 py-1 text-xs font-medium text-muted-foreground;
+    box-shadow: inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
+  }
+
+  /**
+   * Glass: the one container treatment on the marketing pages. A 1px border,
+   * a top-lit inner highlight, and a surface that fades downward, so a card
+   * reads as lit from above rather than as a flat rectangle.
+   */
+  .glass {
+    @apply rounded-2xl border border-white/[0.07];
+    background-image: linear-gradient(
+      180deg,
+      hsl(var(--card) / 0.92),
+      hsl(var(--card) / 0.55)
+    );
+    box-shadow:
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.06),
+      0 24px 48px -24px hsl(var(--shadow-color) / 0.6);
+  }
+
+  /**
+   * A spotlight that follows the pointer across a card's border and surface.
+   * The position is written as CSS variables by `SpotlightGroup`; with no
+   * pointer, or no JavaScript, it simply never appears.
+   */
+  .spotlight {
+    @apply relative isolate overflow-hidden;
+  }
+  .spotlight::before {
     content: "";
+    @apply pointer-events-none absolute inset-0 -z-10 opacity-0 transition-opacity duration-slow;
+    background: radial-gradient(
+      520px circle at var(--mx, 50%) var(--my, 50%),
+      hsl(var(--primary) / 0.10),
+      transparent 42%
+    );
+  }
+  .spotlight::after {
+    content: "";
+    @apply pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 transition-opacity duration-slow;
+    padding: 1px;
+    background: radial-gradient(
+      360px circle at var(--mx, 50%) var(--my, 50%),
+      hsl(var(--primary) / 0.55),
+      transparent 40%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  .spotlight:hover::before,
+  .spotlight:hover::after {
+    @apply opacity-100;
   }
 
-  /** A hairline that fades out at both ends, for dividing editorial bands. */
-  .rule-fade {
+  /** The light falling on the hero from above. */
+  .hero-beam {
+    background:
+      radial-gradient(ellipse 50% 38% at 50% 0%, hsl(var(--primary) / 0.26), transparent 70%),
+      radial-gradient(ellipse 80% 60% at 50% -10%, hsl(var(--primary) / 0.10), transparent 70%);
+  }
+
+  /** A measured grid that fades out from the top centre. */
+  .grid-fade {
+    background-image:
+      linear-gradient(to right, hsl(0 0% 100% / 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(0 0% 100% / 0.035) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 20%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 20%, transparent 80%);
+  }
+
+  /** A hairline that is bright in the middle and gone at both ends. */
+  .hairline {
     @apply h-px w-full;
     background: linear-gradient(
-      to right,
+      90deg,
       transparent,
-      hsl(var(--border-strong)) 18%,
-      hsl(var(--border-strong)) 82%,
+      hsl(0 0% 100% / 0.12) 30%,
+      hsl(0 0% 100% / 0.12) 70%,
       transparent
     );
   }
 
-  /** Fine dot field for the dark bands; masked so it never meets an edge. */
-  .dot-field {
-    background-image: radial-gradient(hsl(var(--inverse-foreground) / 0.13) 1px, transparent 1px);
-    background-size: 22px 22px;
-    mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 20%, transparent 75%);
-    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 20%, transparent 75%);
+  /** Fades an image's lower edge into the card it bleeds out of. */
+  .fade-out-bottom {
+    mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  }
+  .fade-out-x {
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  }
+
+  /** An endless horizontal strip. Content must be rendered twice. */
+  .marquee {
+    animation: marquee 60s linear infinite;
+  }
+  .marquee-reverse {
+    animation-direction: reverse;
+  }
+  .marquee-host:hover .marquee {
+    animation-play-state: paused;
   }
 
   /**
-   * Scroll reveal, with no JavaScript.
+   * Scroll-linked motion, with no JavaScript.
    *
-   * Driven by the view timeline, so it costs nothing on the main thread and
-   * cannot strand content: a browser without scroll timelines, or a user who
-   * asked for reduced motion, simply never gets the animation and sees the
-   * element at full opacity.
+   * Driven by view timelines, so it costs nothing on the main thread and
+   * cannot strand content: without timeline support, or with reduced motion
+   * requested, the element renders in its final state.
    */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
       .reveal {
         animation: reveal linear both;
         animation-timeline: view();
-        animation-range: entry 0% entry 70%;
+        animation-range: entry 0% entry 60%;
+      }
+      /* The product shot starts tipped back and settles flat as it arrives. */
+      .tilt-in {
+        animation: tilt-in linear both;
+        animation-timeline: view();
+        animation-range: entry 10% cover 40%;
+        transform-origin: 50% 0%;
       }
     }
   }
@@ -482,11 +584,29 @@
 @keyframes reveal {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes tilt-in {
+  from {
+    transform: perspective(1600px) rotateX(16deg) scale(0.94);
+  }
+  to {
+    transform: perspective(1600px) rotateX(0deg) scale(1);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
 

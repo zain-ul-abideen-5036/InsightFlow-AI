@@ -1,43 +1,52 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
   ArrowUpRight,
+  Building2,
   Check,
-  CornerDownRight,
+  Cpu,
+  EyeOff,
   FileSpreadsheet,
-  Lock,
+  FileText,
+  Layers,
+  MessageSquareText,
+  Package,
+  Plus,
   PlayCircle,
+  PowerOff,
+  ScanSearch,
+  ShieldCheck,
   Sparkles,
+  Store,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MARK_GEOMETRY } from "@/components/logo";
-import { DashboardPreview } from "@/app/(marketing)/dashboard-preview";
+import { SpotlightGroup } from "@/app/(marketing)/spotlight-group";
 import { cn } from "@/lib/utils";
 
 /**
  * The landing page.
  *
- * An editorial layout rather than a template one. Headlines are set in a
- * display serif with an italic accent; every section opens with a mono index
- * ("01 · The problem"); and no two consecutive bands share a silhouette —
- * a split hero, a ledger of figures, a sticky argument, a numbered track, a
- * bento of real product fragments, a dark pipeline, an index of questions,
- * and a closing panel drawn from the logo's own geometry.
+ * Dark, and built around the product itself. Every image here is a real
+ * capture of the running application with the NovaMart sample dataset
+ * loaded — the same screens and figures a visitor reaches in the demo. In a
+ * product whose argument is that its numbers are traceable, a mocked-up
+ * screenshot would be the one untraceable thing on the page.
  *
- * Every figure on the page comes from the NovaMart sample dataset, the same
- * values a visitor sees in the demo. A premium page built on invented numbers
- * would contradict the one thing this product argues.
+ * Copy is deliberately short: the captures carry the detail, and anyone who
+ * wants the long answers finds them in the FAQ.
  */
 export default function LandingPage() {
   return (
     <>
       <Hero />
-      <Ledger />
-      <Problem />
-      <HowItWorks />
+      <Audience />
+      <Statement />
       <Features />
+      <HowItWorks />
       <Evidence />
       <UseCases />
       <Security />
@@ -47,806 +56,188 @@ export default function LandingPage() {
   );
 }
 
-/* ================================================================== Hero */
+/* --------------------------------------------------------------- Shared */
+
+const PRIMARY_CTA =
+  "group h-12 rounded-full bg-foreground px-6 text-[15px] font-medium text-background " +
+  "shadow-[0_0_0_1px_hsl(0_0%_100%/0.1),0_10px_30px_-10px_hsl(var(--primary)/0.7)] " +
+  "hover:bg-foreground/90 active:bg-foreground/85";
+
+const SECONDARY_CTA =
+  "h-12 rounded-full border border-white/10 bg-white/[0.04] px-6 text-[15px] font-medium " +
+  "text-foreground backdrop-blur hover:border-white/20 hover:bg-white/[0.08] hover:text-foreground";
+
+function CtaPair() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <Button asChild className={PRIMARY_CTA}>
+        <Link href="/signup">
+          Analyse your data
+          <ArrowRight
+            className="size-4 transition-transform duration-base ease-out group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
+        </Link>
+      </Button>
+      <Button asChild variant="ghost" className={SECONDARY_CTA}>
+        <Link href="/demo">
+          <PlayCircle className="size-4" aria-hidden="true" />
+          See how it works
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function SectionHeader({
+  eyebrow,
+  title,
+  muted,
+  body,
+  align = "center",
+}: {
+  eyebrow: string;
+  title: string;
+  muted?: string;
+  body?: string;
+  align?: "center" | "left";
+}) {
+  return (
+    <div className={cn("max-w-3xl", align === "center" && "mx-auto text-center")}>
+      <p className="eyebrow-pill">
+        <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+        {eyebrow}
+      </p>
+      <h2 className="display mt-5 text-[2.25rem] leading-[1.08] sm:text-[3rem] lg:text-[3.4rem]">
+        <span className="text-ink">{title}</span>
+        {muted ? (
+          <>
+            {" "}
+            <span className="text-ink-muted">{muted}</span>
+          </>
+        ) : null}
+      </h2>
+      {body ? (
+        <p
+          className={cn(
+            "mt-5 max-w-xl text-md leading-relaxed text-muted-foreground",
+            align === "center" && "mx-auto",
+          )}
+        >
+          {body}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------- Hero */
 
 function Hero() {
   return (
-    <section className="hero-surface relative overflow-hidden">
-      <div className="hero-grid pointer-events-none absolute inset-0" aria-hidden="true" />
+    <section className="relative overflow-hidden pb-6">
+      <div className="hero-beam pointer-events-none absolute inset-0" aria-hidden="true" />
+      <div className="grid-fade pointer-events-none absolute inset-0" aria-hidden="true" />
 
-      <div className="container relative pt-14 sm:pt-20 lg:pt-24">
-        {/* An editorial split: the headline owns the left, the argument and
-            the actions sit on the right, aligned to the headline's baseline. */}
-        <div className="grid items-end gap-x-12 gap-y-9 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <p className="enter kicker" style={{ "--enter-index": 0 } as React.CSSProperties}>
-              Business analytics, with receipts
-            </p>
-            <h1
-              className="enter display mt-6 text-[3.4rem] sm:text-[5rem] lg:text-[6.25rem]"
-              style={{ "--enter-index": 1 } as React.CSSProperties}
-            >
-              Understand your business.{" "}
-              <em className="text-primary">Act on the data.</em>
-            </h1>
-          </div>
+      <div className="container relative pt-20 sm:pt-28">
+        <div className="mx-auto max-w-5xl text-center">
+          <Link
+            href="/demo"
+            className="enter group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pl-1 pr-3 text-sm text-muted-foreground backdrop-blur transition-colors duration-base hover:border-white/20 hover:text-foreground"
+            style={{ "--enter-index": 0 } as React.CSSProperties}
+          >
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+              Live demo
+            </span>
+            <span className="sm:hidden">Explore a full analysis</span>
+            <span className="hidden sm:inline">Explore a full analysis, no account needed</span>
+            <ArrowRight
+              className="size-3.5 transition-transform duration-base ease-out group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </Link>
 
-          <div
-            className="enter lg:col-span-5 lg:pb-3"
+          <h1
+            className="enter display mt-8 text-[2.6rem] leading-[1.04] sm:text-[3.6rem] lg:text-[4.6rem]"
+            style={{ "--enter-index": 1 } as React.CSSProperties}
+          >
+            <span className="text-ink">Understand your business.</span>
+            <br />
+            <span className="text-ink-muted">Act on the data.</span>
+          </h1>
+
+          <p
+            className="enter mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-muted-foreground"
             style={{ "--enter-index": 2 } as React.CSSProperties}
           >
-            <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-              Upload your business data, discover what changed, investigate why it
-              changed, and ask questions answered with evidence from your own figures.
-            </p>
+            Upload your business data, discover what changed, investigate why it changed,
+            and ask questions answered with evidence from your own figures.
+          </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="xl" asChild className="group rounded-full px-7">
-                <Link href="/signup">
-                  Analyse your data
-                  <ArrowRight
-                    className="transition-transform duration-base ease-out group-hover:translate-x-0.5"
-                    aria-hidden="true"
-                  />
-                </Link>
-              </Button>
-              <Button size="xl" variant="outline" asChild className="rounded-full px-7">
-                <Link href="/demo">
-                  <PlayCircle aria-hidden="true" />
-                  See how it works
-                </Link>
-              </Button>
-            </div>
-
-            <p className="mt-5 flex items-center gap-2 text-sm text-subtle-foreground">
-              <FileSpreadsheet className="size-4" aria-hidden="true" />
-              CSV and Excel. The demo needs no account and no file.
+          <div className="enter mt-10" style={{ "--enter-index": 3 } as React.CSSProperties}>
+            <CtaPair />
+            <p className="mt-5 text-sm text-subtle-foreground">
+              Works with CSV and Excel exports. Every figure computed, never generated.
             </p>
           </div>
         </div>
 
-        {/* The product shot, framed like an object on a table: a bezel, a soft
-            accent bloom behind it, and two annotations that point at what
-            makes the numbers trustworthy. */}
-        <div
-          className="enter relative mx-auto mt-16 max-w-[68rem] sm:mt-20"
-          style={{ "--enter-index": 3 } as React.CSSProperties}
-        >
+        {/* The product, as it actually renders. It arrives tipped back and
+            settles flat as it scrolls into view. */}
+        <div className="relative mx-auto mt-16 max-w-6xl sm:mt-20">
           <div
             aria-hidden="true"
-            className="absolute -inset-x-10 -top-10 bottom-10 rounded-[3rem] bg-primary/[0.09] blur-3xl"
+            className="absolute inset-x-[8%] -top-12 h-2/3 rounded-full bg-primary/25 blur-[110px]"
           />
-          <div className="relative rounded-[1.4rem] border border-border/80 bg-card/60 p-1.5 shadow-showcase backdrop-blur sm:p-2">
-            <DashboardPreview className="shadow-none" />
-          </div>
-
-          <Annotation
-            className="left-0 top-[30%] -translate-x-[62%]"
-            label="Computed, not generated"
-            detail="sum(revenue) · Aug 2026 · 980 rows"
-          />
-          <Annotation
-            className="bottom-[34%] right-0 translate-x-[58%]"
-            label="Ranked by contribution"
-            detail="Nova Air Purifier · 62% of the change"
-          />
-        </div>
-      </div>
-
-      {/* The shot's lower edge fades into the next band instead of ending on
-          a hard line. */}
-      <div
-        className="pointer-events-none relative -mt-28 h-28 bg-gradient-to-b from-transparent to-background"
-        aria-hidden="true"
-      />
-    </section>
-  );
-}
-
-function Annotation({
-  className,
-  label,
-  detail,
-}: {
-  className?: string;
-  label: string;
-  detail: string;
-}) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        "absolute z-10 hidden w-64 rounded-xl border border-border bg-card/90 p-3 shadow-overlay backdrop-blur-md xl:block",
-        className,
-      )}
-    >
-      <p className="flex items-center gap-1.5 text-xs font-semibold">
-        <span className="flex size-4 items-center justify-center rounded-full bg-success-subtle text-success">
-          <Check className="size-2.5" strokeWidth={3} />
-        </span>
-        {label}
-      </p>
-      <p className="mt-1.5 font-mono text-[10.5px] leading-relaxed text-muted-foreground">
-        {detail}
-      </p>
-    </div>
-  );
-}
-
-/* ================================================================ Ledger */
-
-/**
- * Four figures about the product itself, each one a claim the code enforces.
- * Deliberately not customer logos or testimonials: this product has no
- * customers yet, and inventing social proof would undermine everything else.
- */
-function Ledger() {
-  const items = [
-    { value: "0", label: "figures written by the language model" },
-    { value: "0", label: "rows of your file sent to the AI" },
-    { value: "3", label: "anomaly methods, each used only where it fits" },
-    { value: "1", label: "click from any figure to its evidence" },
-  ];
-
-  return (
-    <section id="product" aria-label="InsightFlow in figures" className="relative pt-10">
-      <div className="container">
-        <dl className="reveal grid grid-cols-2 border-y border-border lg:grid-cols-4">
-          {items.map(({ value, label }, index) => (
-            <div
-              key={label}
-              className={cn(
-                "flex flex-col gap-2 px-2 py-8 sm:px-6 sm:py-10",
-                index % 2 === 1 && "border-l border-border",
-                index >= 2 && "border-t border-border lg:border-t-0",
-                index === 2 && "lg:border-l",
-              )}
-            >
-              <dt className="order-2 max-w-[13rem] text-sm leading-snug text-muted-foreground">
-                {label}
-              </dt>
-              <dd className="display tabular order-1 text-6xl sm:text-7xl">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
-  );
-}
-
-/* =============================================================== Problem */
-
-function Problem() {
-  const failures = [
-    {
-      title: "The spreadsheet answers one question at a time",
-      body: "Every follow-up — which product, which region, which week — is another pivot table, and the trail of what you checked disappears when you close the file.",
-    },
-    {
-      title: "The dashboard shows what, never why",
-      body: "A line going down is a prompt, not an answer. Somebody still has to work out which segment moved and what happened at the same time.",
-    },
-    {
-      title: "The chatbot sounds certain and cannot add up",
-      body: "Paste a spreadsheet into a language model and you get confident arithmetic you cannot check, on data that has left your machine.",
-    },
-  ];
-
-  return (
-    <section id="problem" className="py-24 sm:py-32">
-      <div className="container">
-        <div className="grid gap-x-16 gap-y-14 lg:grid-cols-12">
-          <div className="lg:sticky lg:top-32 lg:col-span-5 lg:self-start">
-            <p className="kicker">01 · The problem</p>
-            <h2 className="display mt-6 text-5xl sm:text-6xl">
-              You can see that something changed.{" "}
-              <em className="text-muted-foreground">Finding out what takes a week.</em>
-            </h2>
-            <p className="mt-7 max-w-md text-md leading-relaxed text-muted-foreground">
-              The numbers exist. Getting from &ldquo;revenue is down&rdquo; to &ldquo;here is
-              what moved, and here is what to do&rdquo; is the part that never happens.
-            </p>
-          </div>
-
-          <div className="lg:col-span-7">
-            <ol className="border-t border-border">
-              {failures.map(({ title, body }, index) => (
-                <li
-                  key={title}
-                  className="reveal grid gap-x-8 gap-y-3 border-b border-border py-9 sm:grid-cols-[5rem_1fr]"
-                >
-                  <span
-                    className="display tabular text-5xl text-subtle-foreground/60"
-                    aria-hidden="true"
-                  >
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div>
-                    <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
-                    <p className="mt-2.5 max-w-prose leading-relaxed text-muted-foreground">
-                      {body}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-
-            <figure className="reveal mt-12 rounded-2xl bg-surface-sunken p-8 sm:p-10">
-              <blockquote className="display text-3xl sm:text-4xl">
-                InsightFlow does the analysis the way an analyst would, shows you the
-                working, <em className="text-primary">and tells you what it cannot establish.</em>
-              </blockquote>
-            </figure>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ========================================================== How it works */
-
-function HowItWorks() {
-  const steps = [
-    {
-      title: "Upload your data",
-      body: "CSV or Excel. We read it, work out what each column means, and show you what we found before anything runs.",
-      output: "CSV · TSV · XLSX",
-    },
-    {
-      title: "InsightFlow understands the dataset",
-      body: "Metrics, trends, segments and anomalies — computed in the engine, only where your columns actually support them.",
-      output: "trends · segments · anomalies",
-    },
-    {
-      title: "Explore metrics and insights",
-      body: "What moved, by how much, and how much of the total change each part of the business accounts for.",
-      output: "contribution to change, ranked",
-    },
-    {
-      title: "Ask questions and investigate",
-      body: "Drill into any finding, open the evidence behind it, and ask follow-ups in plain English.",
-      output: "answers with evidence attached",
-    },
-  ];
-
-  return (
-    <section id="how-it-works" className="relative overflow-hidden bg-surface-sunken py-24 sm:py-32">
-      <div className="container">
-        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div>
-            <p className="kicker">02 · How it works</p>
-            <h2 className="display mt-6 text-5xl sm:text-6xl">
-              From a spreadsheet <em>to a decision.</em>
-            </h2>
-          </div>
-          <p className="max-w-sm leading-relaxed text-muted-foreground">
-            Four steps, in order. Nothing runs until you have seen what we understood
-            about your file.
-          </p>
-        </div>
-
-        {/* A track with a node per step. On wide screens it reads left to
-            right; on narrow ones it becomes a vertical rail. */}
-        <ol className="relative mt-16 grid gap-10 md:grid-cols-4 md:gap-6">
-          <div
-            aria-hidden="true"
-            className="absolute bottom-0 left-[11px] top-2 w-px bg-border-strong md:bottom-auto md:left-0 md:right-0 md:top-[11px] md:h-px md:w-auto"
-          />
-          {steps.map((step, index) => (
-            <li key={step.title} className="reveal relative pl-10 md:pl-0">
-              <span
-                aria-hidden="true"
-                className="absolute left-0 top-0.5 flex size-[23px] items-center justify-center rounded-full border border-border-strong bg-background md:static"
-              >
-                <span className="size-2 rounded-full bg-primary" />
-              </span>
-              <p className="tabular mt-0 font-mono text-xs text-subtle-foreground md:mt-7">
-                Step {String(index + 1).padStart(2, "0")}
-              </p>
-              <h3 className="mt-2 text-lg font-semibold tracking-tight">{step.title}</h3>
-              <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-                {step.body}
-              </p>
-              <p className="mt-5 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 font-mono text-[11px] text-muted-foreground shadow-e0">
-                <CornerDownRight className="size-3 text-primary" aria-hidden="true" />
-                {step.output}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================== Features */
-
-function Features() {
-  return (
-    <section id="features" className="py-24 sm:py-32">
-      <div className="container">
-        <div className="grid gap-6 lg:grid-cols-12 lg:items-end">
-          <div className="lg:col-span-7">
-            <p className="kicker">03 · The product</p>
-            <h2 className="display mt-6 text-5xl sm:text-6xl">
-              An analytics engine, <em className="text-primary">with an AI that explains it.</em>
-            </h2>
-          </div>
-          <p className="leading-relaxed text-muted-foreground lg:col-span-5">
-            Every number is computed from your data by a deterministic engine. The AI
-            layer puts those numbers into plain English — it never produces them.
-          </p>
-        </div>
-
-        {/* A bento of real fragments of the product, in three rows whose
-            splits differ (4/2, 2/4, 3/3) so the grid never settles into the
-            three-equal-cards rhythm. */}
-        <div className="mt-16 grid gap-4 md:grid-cols-6">
-          <Tile
-            className="md:col-span-4"
-            title="Anomaly detection"
-            body="Rolling statistics, interquartile ranges, and isolation forests, each applied where it fits rather than everywhere."
-          >
-            <AnomalyVisual />
-          </Tile>
-
-          <Tile
-            className="md:col-span-2"
-            title="Evidence on every claim"
-            body="Each figure carries the calculation, the column, the period, and the row count behind it."
-          >
-            <dl className="space-y-2 rounded-xl border border-border bg-surface-sunken p-4 font-mono text-[11px]">
-              {[
-                ["value", "$193,032.93"],
-                ["calc", "sum(revenue)"],
-                ["period", "Aug 2026"],
-                ["rows", "980"],
-              ].map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between gap-3">
-                  <dt className="text-subtle-foreground">{key}</dt>
-                  <dd className="tabular font-medium text-foreground">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </Tile>
-
-          <Tile
-            className="md:col-span-2"
-            title="Business questions"
-            body="Ask why revenue declined. Get an answer backed by figures you can open and inspect."
-          >
-            <div className="space-y-2.5">
-              <p className="ml-auto w-fit max-w-[90%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm text-primary-foreground">
-                Why did revenue change last month?
-              </p>
-              <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-card px-3.5 py-2.5 shadow-e1">
-                <p className="text-sm font-semibold">August revenue declined 13.9%</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  3 supporting figures · View evidence
-                </p>
-              </div>
-            </div>
-          </Tile>
-
-          <Tile
-            className="md:col-span-4"
-            title="AI investigation"
-            body="When something moves, see which products, regions, or channels account for it — and what coincided with it."
-          >
-            <div className="space-y-4">
-              <ContributionBar label="Nova Air Purifier" value="−$19,193" share={62} emphasis />
-              <ContributionBar label="Every other product" value="−$11,850" share={38} />
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-warning" aria-hidden="true" />
-                Coincides with 7 days of zero available inventory
-              </p>
-            </div>
-          </Tile>
-
-          <Tile
-            className="md:col-span-3"
-            title="Automated analytics"
-            body="Revenue, orders, customers and average order value — calculated only where your data actually supports them."
-          >
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                ["Revenue", "$193K"],
-                ["Orders", "980"],
-                ["Customers", "692"],
-                ["Avg order", "$196.97"],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-border bg-surface-sunken px-3 py-2.5">
-                  <p className="text-[11px] text-subtle-foreground">{label}</p>
-                  <p className="tabular mt-0.5 text-lg font-semibold tracking-tight">{value}</p>
-                </div>
-              ))}
-            </div>
-          </Tile>
-
-          <Tile
-            className="md:col-span-3"
-            title="Performance reports"
-            body="A shareable report with the executive summary, key figures, trends, and what deserves attention."
-          >
-            <div className="relative h-[124px] overflow-hidden">
-              <div className="absolute inset-x-6 top-3 h-full rounded-t-xl border border-border bg-card/60" />
-              <div className="absolute inset-x-0 top-0 h-full rounded-t-xl border border-border bg-card p-4 shadow-e2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-subtle-foreground">
-                  August 2026 · Performance report
-                </p>
-                <p className="display mt-2 text-2xl">Revenue fell 13.9%</p>
-                <div className="mt-3 space-y-1.5">
-                  <div className="h-1.5 w-11/12 rounded-full bg-muted" />
-                  <div className="h-1.5 w-4/5 rounded-full bg-muted" />
-                  <div className="h-1.5 w-2/3 rounded-full bg-muted" />
-                </div>
-              </div>
-            </div>
-          </Tile>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Tile({
-  className,
-  title,
-  body,
-  children,
-}: {
-  className?: string;
-  title: string;
-  body: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <article
-      className={cn(
-        "reveal group flex flex-col justify-between gap-8 overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-e1 transition-[box-shadow,border-color] duration-slow ease-out hover:border-border-strong hover:shadow-e3 sm:p-7",
-        className,
-      )}
-    >
-      <div aria-hidden="true">{children}</div>
-      <div>
-        <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
-        <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted-foreground">{body}</p>
-      </div>
-    </article>
-  );
-}
-
-function ContributionBar({
-  label,
-  value,
-  share,
-  emphasis = false,
-}: {
-  label: string;
-  value: string;
-  share: number;
-  emphasis?: boolean;
-}) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-3 text-sm">
-        <span className={cn(emphasis ? "font-semibold" : "text-muted-foreground")}>{label}</span>
-        <span className="tabular font-mono text-xs text-muted-foreground">
-          {value} · {share}%
-        </span>
-      </div>
-      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn("h-full rounded-full", emphasis ? "bg-primary" : "bg-border-strong")}
-          style={{ width: `${share}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/** A series with its expected band and the one point that left it. */
-function AnomalyVisual() {
-  const series = [44, 47, 42, 50, 46, 52, 48, 55, 51, 49, 94, 53, 50, 56, 52, 58, 54, 57, 55, 60];
-  const width = 600;
-  const height = 150;
-  const x = (index: number) => (index / (series.length - 1)) * width;
-  const y = (value: number) => height - 14 - ((value - 36) / 64) * (height - 28);
-  const line = series.map((value, index) => `${x(index)},${y(value)}`).join(" ");
-  const upper = series.map((value, index) => `${x(index)},${y(Math.min(value, 60) + 9)}`);
-  const lower = series.map((value, index) => `${x(index)},${y(Math.min(value, 60) - 9)}`).reverse();
-  const spike = series.indexOf(94);
-
-  return (
-    <div className="relative">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="rounded-md bg-danger-subtle px-2 py-0.5 text-xs font-semibold text-danger">
-          Anomaly
-        </span>
-        <span className="text-sm font-medium">Units sold · 14 Mar 2026</span>
-        <span className="tabular font-mono text-xs text-muted-foreground">
-          161 against an expected 61
-        </span>
-      </div>
-      <div className="relative">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full" preserveAspectRatio="none" fill="none">
-          <polygon points={[...upper, ...lower].join(" ")} fill="hsl(var(--chart-1) / 0.08)" />
-          <polyline
-            points={line}
-            stroke="hsl(var(--chart-1))"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-          <line
-            x1={x(spike)}
-            x2={x(spike)}
-            y1={y(94)}
-            y2={height}
-            stroke="hsl(var(--danger))"
-            strokeDasharray="3 4"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        {/* Drawn in HTML so it stays round under the stretched viewBox. */}
-        <span
-          className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-danger shadow-e1"
-          style={{
-            left: `${(spike / (series.length - 1)) * 100}%`,
-            top: `${(y(94) / height) * 100}%`,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================== Evidence */
-
-function Evidence() {
-  const pipeline = [
-    { step: "Your file", note: "rows stay here" },
-    { step: "Engine", note: "computes every figure" },
-    { step: "Evidence bundle", note: "aggregates and labels" },
-    { step: "Language model", note: "phrases what was found" },
-    { step: "Verifier", note: "drops unsupported claims" },
-  ];
-
-  return (
-    <section
-      id="evidence"
-      className="relative overflow-hidden bg-inverse py-24 text-inverse-foreground sm:py-32"
-    >
-      <div className="dot-field pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse 50% 55% at 85% 0%, hsl(var(--primary) / 0.28), transparent 65%)",
-        }}
-      />
-
-      <div className="container relative">
-        <div className="max-w-4xl">
-          <p className="kicker text-inverse-muted before:bg-inverse-border">
-            04 · Why this is not an AI wrapper
-          </p>
-          <h2 className="display mt-6 text-5xl sm:text-7xl">
-            AI explains your data.{" "}
-            <em className="text-inverse-muted">It doesn&rsquo;t invent it.</em>
-          </h2>
-          <p className="mt-7 max-w-2xl text-md leading-relaxed text-inverse-muted">
-            Language models cannot reliably add up thousands of rows, and a confident wrong
-            number is worse than no number. So InsightFlow computes every figure first, then
-            asks the model to phrase what was found.
-          </p>
-        </div>
-
-        {/* The pipeline, drawn as it runs. The model sits fourth — after the
-            numbers already exist — which is the entire argument. */}
-        <ol className="reveal mt-16 grid gap-px overflow-hidden rounded-2xl border border-inverse-border bg-inverse-border sm:grid-cols-5">
-          {pipeline.map(({ step, note }, index) => (
-            <li
-              key={step}
-              className="relative bg-inverse px-5 py-6"
-            >
-              {index === 3 ? (
-                <span aria-hidden="true" className="absolute inset-0 bg-primary/15" />
-              ) : null}
-              <p className="tabular relative font-mono text-[11px] text-inverse-muted">
-                {String(index + 1).padStart(2, "0")}
-              </p>
-              <p className="relative mt-3 font-semibold">{step}</p>
-              <p className="relative mt-1 text-sm text-inverse-muted">{note}</p>
-              {index < pipeline.length - 1 ? (
-                <ArrowRight
-                  aria-hidden="true"
-                  className="absolute right-3 top-6 hidden size-3.5 text-inverse-muted sm:block"
-                />
-              ) : null}
-            </li>
-          ))}
-        </ol>
-
-        <div className="mt-14 grid items-start gap-12 lg:grid-cols-[1fr_1.15fr]">
-          <ul className="divide-y divide-inverse-border border-y border-inverse-border">
-            {[
-              {
-                title: "Deterministic analytics calculates the numbers",
-                body: "Totals, growth rates, contributions, anomaly bounds and segment breakdowns are computed in pandas and tested against known-answer fixtures.",
-              },
-              {
-                title: "The AI only explains what was found",
-                body: "It receives a compact evidence bundle — aggregates and labels, never the rows of your file.",
-              },
-              {
-                title: "Evidence is shown with every answer",
-                body: "Each figure carries its calculation, its column, its period, and how many rows contributed.",
-              },
-              {
-                title: "Unsupported claims are discarded",
-                body: "A response citing a figure the analysis never produced is thrown away rather than shown to you. Coincidence is reported as coincidence, never as a cause.",
-              },
-            ].map(({ title, body }) => (
-              <li key={title} className="reveal flex gap-4 py-6">
-                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
-                  <Check className="size-3" strokeWidth={3} aria-hidden="true" />
-                </span>
-                <div>
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-inverse-muted">{body}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {/* A real answer, rendered the way the product renders one. */}
-          <div className="reveal relative">
-            <div
-              aria-hidden="true"
-              className="absolute -inset-4 rounded-[2rem] bg-primary/20 blur-3xl"
+          <div className="tilt-in relative rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-1.5 backdrop-blur sm:p-2">
+            <div className="pointer-events-none absolute inset-x-16 -top-px h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+            <Image
+              src="/marketing/overview.webp"
+              alt="The InsightFlow overview for the NovaMart sample dataset: revenue down 13.9% to $193K, orders, customers and average order value with sparklines, a second row of profit, margin, units, cost, revenue per customer and discount, and a revenue-over-time chart."
+              width={2400}
+              height={1500}
+              priority
+              unoptimized
+              className="rounded-2xl border border-white/[0.06]"
             />
-            <div className="relative overflow-hidden rounded-3xl border border-inverse-border bg-inverse shadow-overlay">
-              <div className="flex items-center justify-between gap-3 border-b border-inverse-border px-6 py-4">
-                <p className="flex items-center gap-2 text-xs font-medium text-inverse-muted">
-                  <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-                  Why did revenue change last month?
-                </p>
-                <Badge variant="on-inverse">Answer</Badge>
-              </div>
-
-              <div className="px-6 pt-6">
-                <h3 className="display text-4xl">August revenue declined 13.9%</h3>
-              </div>
-
-              <dl className="mx-6 mt-6 grid grid-cols-3 divide-x divide-inverse-border rounded-xl border border-inverse-border">
-                {[
-                  { label: "Revenue, Aug 2026", value: "$193,033" },
-                  { label: "Revenue, Jul 2026", value: "$224,076" },
-                  { label: "Change", value: "−13.9%" },
-                ].map(({ label, value }) => (
-                  <div key={label} className="min-w-0 px-2.5 py-3 sm:px-3.5">
-                    <dt className="truncate text-2xs text-inverse-muted">{label}</dt>
-                    <dd className="tabular mt-1 text-base font-semibold sm:text-lg">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-
-              <div className="space-y-4 px-6 py-6 text-sm">
-                <div>
-                  <p className="text-2xs font-semibold uppercase tracking-[0.09em] text-inverse-muted">
-                    What the data shows
-                  </p>
-                  <p className="mt-1.5 leading-relaxed text-inverse-foreground/90">
-                    Nova Air Purifier fell by USD 19,193, which is 62% of the total change.
-                    Inventory records show zero available units on 7 days in this period.
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
-                  <p className="text-2xs font-semibold text-warning">
-                    Possible explanation{" "}
-                    <span className="font-normal text-inverse-muted">
-                      — consistent with the data, not established by it
-                    </span>
-                  </p>
-                  <p className="mt-1.5 leading-relaxed text-inverse-foreground/85">
-                    The stockout coincides with the decline. The data is consistent with an
-                    inventory shortage, though it cannot confirm it as the cause.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 border-t border-inverse-border px-6 py-3.5">
-                <Badge variant="on-inverse">Confidence: moderate</Badge>
-                <span className="text-2xs text-inverse-muted">From the NovaMart sample dataset</span>
-              </div>
-            </div>
           </div>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-background via-background/70 to-transparent"
+          />
         </div>
-
-        <p className="mt-16 text-center text-lg">
-          Turn the AI off entirely and the product still works.{" "}
-          <span className="text-inverse-muted">The whole test suite runs that way.</span>
-        </p>
       </div>
     </section>
   );
 }
 
-/* ============================================================= Use cases */
+/* ------------------------------------------------------------- Audience */
 
-function UseCases() {
-  const cases = [
-    {
-      title: "Online retail",
-      question: "Why did last month fall short?",
-      body: "An order export becomes revenue, margin, and average order value by product, category, and region — with the segments that moved ranked by how much of the change they account for.",
-    },
-    {
-      title: "Subscriptions",
-      question: "Which plan is quietly shrinking?",
-      body: "Monthly revenue by plan and cohort, with the trend separated from the noise, so a slow decline is visible before it shows up in the total.",
-    },
-    {
-      title: "Hospitality",
-      question: "Which days actually make money?",
-      body: "Covers, spend per head, and discounting by day of week and site, with weekly seasonality reported only where there is enough history to justify the claim.",
-    },
-    {
-      title: "Operations",
-      question: "Did a stockout cost us sales?",
-      body: "Zero-availability days are lined up against the sales that fell, and reported as a coincidence with a stated confidence — never as a proven cause.",
-    },
-    {
-      title: "Customers",
-      question: "Are we growing, or churning quietly?",
-      body: "New against returning revenue, concentration risk, and revenue per customer — computed only when the file actually carries a customer identifier.",
-    },
-    {
-      title: "Reporting",
-      question: "What do I send the board?",
-      body: "A performance report with the executive summary, key figures, trends, and what deserves attention, with figures fixed at generation time so they never move under you.",
-    },
+function Audience() {
+  const groups = [
+    { icon: Store, label: "E-commerce teams" },
+    { icon: Building2, label: "Agencies" },
+    { icon: TrendingUp, label: "Founders" },
+    { icon: Users, label: "Operators" },
+    { icon: Layers, label: "Growing businesses" },
   ];
 
   return (
-    <section id="use-cases" className="py-24 sm:py-32">
+    <section id="product" aria-label="Who InsightFlow is for" className="relative pb-4 pt-6">
       <div className="container">
-        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div>
-            <p className="kicker">05 · What people bring it</p>
-            <h2 className="display mt-6 text-5xl sm:text-6xl">
-              Any export with a date, <em>an amount, and a question.</em>
-            </h2>
-          </div>
-          <p className="max-w-sm leading-relaxed text-muted-foreground">
-            The engine reports the metrics your columns support and states plainly which
-            ones they do not.
-          </p>
-        </div>
-
-        {/* An index, not a card grid: the questions are the content, so they
-            are set large and read down the page like a table of contents. */}
-        <ul className="mt-16 border-t border-border">
-          {cases.map(({ title, question, body }, index) => (
+        <p className="text-center text-sm text-subtle-foreground">
+          Built for the people who own the numbers
+        </p>
+        {/* Deliberately not customer logos: this product has no customers yet,
+            and inventing social proof would undermine everything else here. */}
+        <ul className="mx-auto mt-6 flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-4">
+          {groups.map(({ icon: Icon, label }) => (
             <li
-              key={title}
-              className="reveal grid gap-x-10 gap-y-3 border-b border-border py-8 md:grid-cols-12 md:items-baseline"
+              key={label}
+              className="flex items-center gap-2.5 text-[15px] font-medium text-muted-foreground/80"
             >
-              <p className="flex items-baseline gap-3 md:col-span-3">
-                <span className="tabular font-mono text-xs text-subtle-foreground">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="text-sm font-semibold">{title}</span>
-              </p>
-              <h3 className="display text-3xl sm:text-4xl md:col-span-5">{question}</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground md:col-span-4">
-                {body}
-              </p>
+              <Icon className="size-[18px] text-subtle-foreground" aria-hidden="true" />
+              {label}
             </li>
           ))}
         </ul>
@@ -855,65 +246,414 @@ function UseCases() {
   );
 }
 
-/* ============================================================== Security */
+/* ------------------------------------------------------------ Statement */
 
-function Security() {
-  const controls = [
+function Statement() {
+  return (
+    <section id="problem" className="py-24 sm:py-28">
+      <div className="container">
+        <p className="reveal display mx-auto max-w-5xl text-center text-[1.6rem] leading-[1.22] sm:text-[2.75rem] sm:leading-[1.18]">
+          <span className="text-ink">You can see that something changed.</span>{" "}
+          <span className="text-muted-foreground/60">
+            Finding out what takes a week of pivot tables, a dashboard that shows what but
+            never why, and a chatbot that cannot add up.
+          </span>{" "}
+          <span className="text-ink">
+            InsightFlow does the analysis an analyst would — and shows the working.
+          </span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------- Features */
+
+function Features() {
+  return (
+    <section id="features" className="pb-24 sm:pb-28">
+      <div className="container">
+        <SectionHeader
+          eyebrow="The product"
+          title="An analytics engine,"
+          muted="with an AI that explains it."
+          body="Every number is computed from your data by a deterministic engine. The AI puts those numbers into plain English — it never produces them."
+        />
+
+        <SpotlightGroup className="mt-16 grid gap-4 lg:grid-cols-12">
+          <FeatureTile
+            className="lg:col-span-7"
+            icon={TrendingUp}
+            title="Know what changed, ranked"
+            body="Every movement in your business, ordered by how much of the total change it accounts for."
+            image={{ src: "/marketing/insights.webp" }}
+            alt="Insights ranked by severity: unusual revenue on 16 January 2026 at $10.3K against an expected $5,269, and Nova Air Purifier down 44.5%."
+          />
+          <FeatureTile
+            className="lg:col-span-5"
+            icon={MessageSquareText}
+            title="Ask in plain English"
+            body="Answers arrive with the figures behind them — computed from your data and open to inspection."
+            image={{ src: "/marketing/ask.webp" }}
+            alt="An answer to 'Why did revenue decline last month?': revenue fell 13.9% in August 2026, with evidence of $193K against $224.1K."
+          />
+          <FeatureTile
+            className="lg:col-span-5"
+            icon={ScanSearch}
+            title="Catch what's unusual"
+            body="Rolling statistics, interquartile ranges and isolation forests — each applied only where it fits."
+            image={{ src: "/marketing/anomalies.webp" }}
+            alt="Detected anomalies, each with the observed value, the expected value and how far outside the range it fell."
+          />
+          <FeatureTile
+            className="lg:col-span-7"
+            icon={Sparkles}
+            title="Investigate why"
+            body="Open any anomaly to see which channel, product or region moved — and what moved with it."
+            image={{ src: "/marketing/investigation.webp" }}
+            alt="An investigation of average order value on 9 May 2026, 104.5% above the expected range, broken down by channel, product, status and region."
+          />
+        </SpotlightGroup>
+
+        <ul className="mx-auto mt-14 grid max-w-5xl gap-10 sm:grid-cols-3">
+          {[
+            {
+              icon: FileText,
+              title: "Board-ready reports",
+              body: "Summary, key figures and trends, fixed at generation so they never move under you.",
+            },
+            {
+              icon: ShieldCheck,
+              title: "Evidence on every figure",
+              body: "The calculation, column, period and row count behind each number, one click away.",
+            },
+            {
+              icon: PowerOff,
+              title: "Works with the AI off",
+              body: "Analysis, anomalies and reports all run without a model. The test suite proves it.",
+            },
+          ].map(({ icon: Icon, title, body }) => (
+            <li key={title} className="reveal">
+              <Icon className="size-5 text-primary" aria-hidden="true" />
+              <h3 className="mt-4 text-[15px] font-semibold">{title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function FeatureTile({
+  className,
+  icon: Icon,
+  title,
+  body,
+  image,
+  alt,
+}: {
+  className?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  body: string;
+  image: { src: string };
+  alt: string;
+}) {
+  return (
+    <article className={cn("glass spotlight reveal group flex flex-col", className)}>
+      <div className="p-7 sm:p-8">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-primary">
+            <Icon className="size-4" aria-hidden="true" />
+          </span>
+          <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+        </div>
+        <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">{body}</p>
+      </div>
+      {/* The capture bleeds off the card's lower-right edge, so it reads as a
+          window into the product rather than a picture pasted on a card. */}
+      <div className="fade-out-bottom relative min-h-[15rem] flex-1 sm:min-h-[19rem]">
+        <div className="absolute inset-0 left-7 overflow-hidden rounded-tl-xl border-l border-t border-white/[0.08] sm:left-8">
+          <Image
+            src={image.src}
+            alt={alt}
+            fill
+            sizes="(min-width: 1024px) 60vw, 100vw"
+            unoptimized
+            className="origin-top-left object-cover object-left-top transition-transform duration-slow ease-out group-hover:scale-[1.02]"
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* --------------------------------------------------------- How it works */
+
+function HowItWorks() {
+  const steps = [
     {
-      title: "Aggregates, not rows",
-      body: "The AI layer receives computed metrics and segment names — never the rows of your file.",
+      title: "Upload your data",
+      body: "CSV or Excel. We show you what each column was read as before anything runs.",
     },
     {
-      title: "Run the model locally",
-      body: "The default development setup uses a local model, so nothing leaves your machine at all.",
+      title: "The engine analyses it",
+      body: "Metrics, trends, segments and anomalies — only where your columns support them.",
     },
     {
-      title: "Isolated by workspace",
-      body: "Access is enforced in the backend on every request, not just in the interface.",
+      title: "See what moved",
+      body: "Every change ranked by how much of the total it accounts for.",
     },
     {
-      title: "You can see what is sent",
-      body: "Settings shows the active AI provider and exactly what is transmitted to it.",
+      title: "Ask and investigate",
+      body: "Drill into any finding and ask follow-ups in plain English.",
     },
   ];
 
   return (
-    <section id="security" className="bg-surface-sunken py-24 sm:py-32">
+    <section id="how-it-works" className="relative py-24 sm:py-28">
+      <div className="hairline absolute inset-x-0 top-0" aria-hidden="true" />
       <div className="container">
-        <div className="grid gap-x-16 gap-y-12 lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            <p className="kicker">06 · Security</p>
-            <div className="mt-8 flex size-14 items-center justify-center rounded-2xl border border-border bg-card text-primary shadow-e2">
-              <Lock className="size-6" aria-hidden="true" />
-            </div>
-            <h2 className="display mt-8 text-5xl sm:text-6xl">
-              Your business data <em className="text-primary">stays yours.</em>
-            </h2>
-            {/* An honest statement of what we have not done is itself a trust signal. */}
-            <p className="mt-7 max-w-md text-sm leading-relaxed text-subtle-foreground">
-              InsightFlow AI does not hold SOC 2, ISO 27001, HIPAA, or GDPR certification. We
-              describe the controls that exist rather than claiming ones that do not.
-            </p>
+        <SectionHeader eyebrow="How it works" title="From a spreadsheet" muted="to a decision." />
+
+        <ol className="relative mx-auto mt-16 grid max-w-6xl gap-4 md:grid-cols-4">
+          {steps.map((step, index) => (
+            <li key={step.title} className="glass reveal relative p-6">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs text-primary">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                {index < steps.length - 1 ? (
+                  <ArrowRight
+                    className="hidden size-4 text-subtle-foreground/60 md:block"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Check className="hidden size-4 text-primary md:block" aria-hidden="true" />
+                )}
+              </div>
+              <h3 className="mt-8 text-[17px] font-semibold tracking-tight">{step.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------- Evidence */
+
+function Evidence() {
+  const pipeline = [
+    { icon: FileSpreadsheet, title: "Your file", note: "Rows never leave this step" },
+    { icon: Cpu, title: "Analytics engine", note: "Computes every figure" },
+    { icon: Package, title: "Evidence bundle", note: "Aggregates and labels only" },
+    { icon: Sparkles, title: "Language model", note: "Phrases what was found", model: true },
+    { icon: ShieldCheck, title: "Verifier", note: "Discards unsupported figures" },
+    { icon: MessageSquareText, title: "Your answer", note: "Evidence attached" },
+  ];
+
+  return (
+    <section id="evidence" className="relative overflow-hidden py-24 sm:py-28">
+      <div className="hairline absolute inset-x-0 top-0" aria-hidden="true" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-1/2 h-[36rem] w-[36rem] -translate-y-1/2 translate-x-1/3 rounded-full bg-primary/[0.12] blur-[120px]"
+      />
+      <div className="container relative">
+        <div className="grid items-center gap-16 lg:grid-cols-2">
+          <div>
+            <SectionHeader
+              align="left"
+              eyebrow="Why this is not an AI wrapper"
+              title="AI explains your data."
+              muted="It doesn't invent it."
+              body="Language models cannot reliably add up thousands of rows, and a confident wrong number is worse than none. So every figure is computed first, and the model only phrases it."
+            />
+            <ul className="mt-10 space-y-4">
+              {[
+                "Every figure computed in pandas, tested against known answers",
+                "The model sees aggregates and labels — never your rows",
+                "Any answer citing a figure the engine never produced is discarded",
+                "Coincidence is reported as coincidence, never as a cause",
+              ].map((item) => (
+                <li key={item} className="flex gap-3 text-[15px]">
+                  <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <ul className="grid gap-px self-end overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2 lg:col-span-7">
-            {controls.map(({ title, body }, index) => (
-              <li key={title} className="reveal bg-card p-8">
-                <p className="tabular font-mono text-xs text-subtle-foreground">
-                  {String(index + 1).padStart(2, "0")}
-                </p>
-                <h3 className="mt-5 text-lg font-semibold tracking-tight">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-              </li>
-            ))}
-          </ul>
+          {/* The pipeline as it runs. The model sits fourth, after the numbers
+              already exist — which is the entire argument. */}
+          <figure className="glass reveal p-6 sm:p-8">
+            <figcaption className="flex items-center justify-between text-xs text-subtle-foreground">
+              <span className="font-mono uppercase tracking-[0.14em]">Answer pipeline</span>
+              <span className="hidden sm:inline">Every question, every time</span>
+            </figcaption>
+            <ol className="relative mt-6">
+              <div
+                aria-hidden="true"
+                className="absolute bottom-6 left-5 top-6 w-px bg-gradient-to-b from-white/5 via-white/15 to-white/5"
+              />
+              {pipeline.map(({ icon: Icon, title, note, model }) => (
+                <li
+                  key={title}
+                  className={cn(
+                    "relative flex items-center gap-4 rounded-xl py-2.5",
+                    model && "-mx-3 my-1 border border-primary/30 bg-primary/[0.08] px-3",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "relative z-10 flex size-10 shrink-0 items-center justify-center rounded-xl border bg-card",
+                      model
+                        ? "border-primary/40 text-primary shadow-[0_0_24px_-4px_hsl(var(--primary)/0.6)]"
+                        : "border-white/10 text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="size-[18px]" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-medium">{title}</p>
+                    <p className="text-sm text-muted-foreground">{note}</p>
+                  </div>
+                  {model ? (
+                    <span className="hidden rounded-full border border-primary/30 px-2.5 py-0.5 text-xs text-primary sm:inline">
+                      After the numbers exist
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </figure>
         </div>
       </div>
     </section>
   );
 }
 
-/* =================================================================== FAQ */
+/* ------------------------------------------------------------ Use cases */
+
+function UseCases() {
+  const rows = [
+    [
+      ["Online retail", "Why did last month fall short?"],
+      ["Subscriptions", "Which plan is quietly shrinking?"],
+      ["Hospitality", "Which days actually make money?"],
+      ["Operations", "Did a stockout cost us sales?"],
+      ["Customers", "Are we growing, or churning quietly?"],
+    ],
+    [
+      ["Reporting", "What do I send the board?"],
+      ["Channels", "Which channel moved revenue?"],
+      ["Pricing", "Did the discount pay for itself?"],
+      ["Regions", "Where did the decline start?"],
+      ["Products", "Which products are declining?"],
+    ],
+  ];
+
+  return (
+    <section id="use-cases" className="relative py-24 sm:py-28">
+      <div className="hairline absolute inset-x-0 top-0" aria-hidden="true" />
+      <div className="container">
+        <SectionHeader
+          eyebrow="What people bring it"
+          title="Any export with a date and an amount."
+          body="The engine reports the metrics your columns support, and says plainly which ones they don't."
+        />
+      </div>
+
+      {/* Two strips drifting in opposite directions. Hover pauses them; with
+          reduced motion they do not move at all. */}
+      <ul
+        aria-label="Example questions"
+        className="marquee-host fade-out-x mt-16 space-y-4 overflow-hidden"
+      >
+        {rows.map((row, rowIndex) => (
+          <li
+            key={rowIndex}
+            className={cn("marquee flex w-max gap-4", rowIndex === 1 && "marquee-reverse")}
+          >
+            {[...row, ...row].map(([category, question], index) => (
+              <div
+                key={`${question}-${index}`}
+                aria-hidden={index >= row.length}
+                className="glass flex shrink-0 items-center gap-3 rounded-full py-3 pl-3 pr-6"
+              >
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-xs text-muted-foreground">
+                  {category}
+                </span>
+                <span className="text-[15px] font-medium">{question}</span>
+              </div>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------- Security */
+
+function Security() {
+  const controls = [
+    {
+      icon: EyeOff,
+      title: "Aggregates, not rows",
+      body: "The AI receives computed metrics and segment names — never the rows of your file.",
+    },
+    {
+      icon: Cpu,
+      title: "Run the model locally",
+      body: "The default setup uses a local model, so nothing leaves your machine at all.",
+    },
+    {
+      icon: Layers,
+      title: "Isolated by workspace",
+      body: "Access is enforced in the backend on every request, not just in the interface.",
+    },
+    {
+      icon: ScanSearch,
+      title: "See what is sent",
+      body: "Settings shows the active AI provider and exactly what is transmitted to it.",
+    },
+  ];
+
+  return (
+    <section id="security" className="relative py-24 sm:py-28">
+      <div className="hairline absolute inset-x-0 top-0" aria-hidden="true" />
+      <div className="container">
+        <SectionHeader eyebrow="Security" title="Your business data" muted="stays yours." />
+
+        <SpotlightGroup className="mx-auto mt-16 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {controls.map(({ icon: Icon, title, body }) => (
+            <div key={title} className="glass spotlight reveal p-6">
+              <span className="flex size-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-primary">
+                <Icon className="size-[18px]" aria-hidden="true" />
+              </span>
+              <h3 className="mt-6 text-[15px] font-semibold">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+            </div>
+          ))}
+        </SpotlightGroup>
+
+        {/* An honest statement of what we have not done is itself a trust signal. */}
+        <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-subtle-foreground">
+          InsightFlow AI holds no SOC 2, ISO 27001, HIPAA, or GDPR certification. We describe
+          the controls that exist rather than claiming ones that do not.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ FAQ */
 
 function Faq() {
   const questions = [
@@ -952,14 +692,12 @@ function Faq() {
   ];
 
   return (
-    <section id="faq" className="py-24 sm:py-32">
+    <section id="faq" className="relative py-24 sm:py-28">
+      <div className="hairline absolute inset-x-0 top-0" aria-hidden="true" />
       <div className="container">
-        <div className="grid gap-x-16 gap-y-12 lg:grid-cols-12">
-          <div className="lg:sticky lg:top-32 lg:col-span-4 lg:self-start">
-            <p className="kicker">07 · Questions</p>
-            <h2 className="display mt-6 text-5xl sm:text-6xl">
-              Worth asking <em>first.</em>
-            </h2>
+        <div className="grid gap-12 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <SectionHeader align="left" eyebrow="FAQ" title="Questions worth" muted="asking first." />
             <Link
               href="/demo"
               className="group mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-primary"
@@ -972,93 +710,53 @@ function Faq() {
             </Link>
           </div>
 
-          <dl className="border-t border-border lg:col-span-8">
+          {/* Native disclosure: accessible, keyboard-operable, and no JavaScript. */}
+          <div className="border-t border-white/[0.07] lg:col-span-8">
             {questions.map(({ q, a }) => (
-              <div key={q} className="reveal border-b border-border py-8">
-                <dt className="text-xl font-semibold tracking-tight">{q}</dt>
-                <dd className="mt-3 max-w-prose leading-relaxed text-muted-foreground">{a}</dd>
-              </div>
+              <details key={q} className="group border-b border-white/[0.07]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-[17px] font-medium [&::-webkit-details-marker]:hidden">
+                  {q}
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-white/10 text-muted-foreground transition-[transform,border-color,color] duration-slow ease-out group-hover:border-white/20 group-hover:text-foreground group-open:rotate-45">
+                    <Plus className="size-3.5" aria-hidden="true" />
+                  </span>
+                </summary>
+                <p className="max-w-2xl pb-6 pr-12 leading-relaxed text-muted-foreground">{a}</p>
+              </details>
             ))}
-          </dl>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-/* =================================================================== CTA */
+/* ------------------------------------------------------------------ CTA */
 
-/**
- * The closing panel carries the logo's signal line, drawn huge: the data dips,
- * recovers, and resolves into one bright point — the finding.
- */
 function ClosingCta() {
-  const g = MARK_GEOMETRY;
-
   return (
     <section className="pb-24 sm:pb-32">
       <div className="container">
-        <div className="relative isolate overflow-hidden rounded-[2rem] bg-inverse px-6 py-20 text-inverse-foreground sm:px-14 sm:py-28">
-          <div className="dot-field pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
-          <svg
-            viewBox="4 6 24 20"
+        <div className="glass relative isolate overflow-hidden rounded-[2rem] px-6 py-20 text-center sm:py-28">
+          <div className="hero-beam absolute inset-0 -z-10" aria-hidden="true" />
+          <div className="grid-fade absolute inset-0 -z-10" aria-hidden="true" />
+          <div
             aria-hidden="true"
-            className="pointer-events-none absolute right-6 top-1/2 -z-10 hidden h-[68%] -translate-y-1/2 lg:block"
-            fill="none"
-          >
-            <path
-              d={g.line}
-              stroke="hsl(var(--inverse-foreground) / 0.16)"
-              strokeWidth={0.35}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle
-              cx={g.datum.cx}
-              cy={g.datum.cy}
-              r={2.4}
-              stroke="hsl(var(--primary) / 0.35)"
-              strokeWidth={0.12}
-            />
-            <circle cx={g.datum.cx} cy={g.datum.cy} r={1.5} fill="hsl(var(--primary) / 0.16)" />
-            <circle cx={g.datum.cx} cy={g.datum.cy} r={0.75} fill="hsl(var(--primary))" />
-          </svg>
-
-          <div className="max-w-2xl">
-            <p className="kicker text-inverse-muted before:bg-inverse-border">Get started</p>
-            <h2 className="display mt-6 text-5xl sm:text-7xl">
-              See what changed <em className="text-primary">in your business.</em>
-            </h2>
-            <p className="mt-7 max-w-lg text-md leading-relaxed text-inverse-muted">
-              Open the demo and explore a full analysis right now, or bring your own export
-              and have one in under a minute.
-            </p>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-              <Button size="xl" variant="on-inverse" asChild className="group rounded-full px-7">
-                <Link href="/signup">
-                  Analyse your data
-                  <ArrowRight
-                    className="transition-transform duration-base ease-out group-hover:translate-x-0.5"
-                    aria-hidden="true"
-                  />
-                </Link>
-              </Button>
-              <Button
-                size="xl"
-                variant="on-inverse-outline"
-                asChild
-                className="rounded-full px-7"
-              >
-                <Link href="/demo">
-                  <PlayCircle aria-hidden="true" />
-                  See how it works
-                </Link>
-              </Button>
-            </div>
-            <p className="mt-6 text-sm text-inverse-muted">
-              The demo needs no account. Nothing you do in it affects anyone else.
-            </p>
+            className="pointer-events-none absolute inset-x-24 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent"
+          />
+          <h2 className="display mx-auto max-w-3xl text-[2.25rem] leading-[1.08] sm:text-[3.5rem]">
+            <span className="text-ink">See what changed</span>{" "}
+            <span className="text-ink-muted">in your business.</span>
+          </h2>
+          <p className="mx-auto mt-6 max-w-lg text-md leading-relaxed text-muted-foreground">
+            Explore a full analysis right now, or bring your own export and have one in under
+            a minute.
+          </p>
+          <div className="mt-10">
+            <CtaPair />
           </div>
+          <p className="mt-6 text-sm text-subtle-foreground">
+            The demo needs no account. Nothing you do in it affects anyone else.
+          </p>
         </div>
       </div>
     </section>
