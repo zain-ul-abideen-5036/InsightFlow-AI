@@ -30,7 +30,7 @@
 
 <br />
 
-<img src="docs/screenshots/landing.png" alt="The InsightFlow AI landing page: the headline Understand your business. Act on the data., above a product shot of the NovaMart dashboard showing revenue down 13.9%" width="100%" />
+<img src="docs/screenshots/landing.png" alt="The InsightFlow AI landing page, dark: a Live demo pill, the headline Understand your business. Act on the data., the buttons Analyse your data and See how it works, and the top of a product shot of the NovaMart dashboard" width="100%" />
 
 ---
 
@@ -124,7 +124,13 @@ and only then handed to the model to phrase. The conclusion, the figures behind
 it, and — set visibly apart, because the distinction is the product — what
 *might* explain it.
 
-<img src="docs/screenshots/ask.png" alt="Ask InsightFlow answering Why did revenue decline last month?: Revenue fell 13.9% in August 2026 compared to July 2026, with evidence cards for August revenue, July revenue and the change, a Possible explanation panel about the Nova Air Purifier inventory shortage, what to check next, follow-up questions and a Moderate confidence badge" width="100%" />
+<img src="docs/screenshots/ask.png" alt="Ask InsightFlow answering Why did revenue decline last month?: Revenue fell 13.9% in Aug 2026 compared with Jul 2026, with evidence cards, six findings including that Nova Air Purifier alone accounts for 61.8% of the change, a Possible explanation panel about zero recorded inventory, what to check next, follow-up questions, a Moderate confidence badge, and the footer Written from the computed analysis, no model was used" width="100%" />
+
+Look at the footer: *written from the computed analysis — no model was used.*
+This capture ran against a small local model (qwen2.5 3B), and its version of
+the answer made two unhedged causal claims. The guardrail rejected it and the
+engine's own answer was shown instead — the same figures, stated plainly. That
+is the product working as intended, captured as it happened.
 
 ### Upload a file, confirm what it means
 
@@ -141,7 +147,7 @@ it, and — set visibly apart, because the distinction is the product — what
 
 ### Investigate a movement
 
-<img src="docs/screenshots/investigation.png" alt="An anomaly investigation: what happened, where it happened, what coincided with it, and possible explanations shown on a separate muted surface" width="100%" />
+<img src="docs/screenshots/investigation.png" alt="An investigation of average order value on 9 May 2026, 104.5% above its expected range: what happened, where it happened by channel, product, status and region, supporting signals, possible explanations on a separate muted surface, what to check next, and a high confidence badge with Explained by qwen2.5:3b-instruct" width="100%" />
 
 What happened, where it happened, what coincided with it, and what might explain
 it. The evidence arrives first and immediately; the written explanation follows,
@@ -169,7 +175,7 @@ and is cached so the wait is paid once per anomaly rather than once per visit.
 </table>
 
 <details>
-<summary><b>More of the product</b> — datasets, settings, sign-in, onboarding and the empty Ask screen</summary>
+<summary><b>More of the product</b> — datasets, settings, sign-in, onboarding, the empty Ask screen, the phone menu and the full landing page</summary>
 
 <br />
 
@@ -197,6 +203,14 @@ answer.
 
 <img src="docs/screenshots/ask-empty.png" alt="The Ask InsightFlow entry screen with suggested questions" width="100%" />
 
+**The navigation drawer**, on a phone.
+
+<img src="docs/screenshots/mobile-navigation.png" alt="The navigation drawer open on a phone, listing Overview, Insights, Anomalies, Ask InsightFlow, Reports, Datasets and Settings" width="33%" />
+
+**The complete landing page**, top to bottom.
+
+<img src="docs/screenshots/landing-full.png" alt="The full InsightFlow AI landing page from the hero through the product, the problem, the features, how it works, why it is not an AI wrapper, use cases, security, the FAQ and the closing call to action" width="100%" />
+
 </details>
 
 ---
@@ -205,12 +219,17 @@ answer.
 
 Light and dark are written as two sets of tokens rather than one inverted into
 the other, so a red decline and a green gain stay legible instead of turning
-muddy.
+muddy. The public pages are dark by design; the app follows the viewer's
+choice.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/overview.png" alt="The overview dashboard in the light theme" width="100%" /></td>
 <td width="50%"><img src="docs/screenshots/overview-dark.png" alt="The overview dashboard in the dark theme" width="100%" /></td>
+<td width="50%"><img src="docs/screenshots/ask-dark.png" alt="An Ask InsightFlow answer in the dark theme" width="100%" /></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/investigation-dark.png" alt="An anomaly investigation in the dark theme" width="100%" /></td>
+<td width="50%"><img src="docs/screenshots/insights-dark.png" alt="The insights page in the dark theme" width="100%" /></td>
 </tr>
 </table>
 
@@ -220,14 +239,18 @@ muddy.
 <tr>
 <td width="25%"><img src="docs/screenshots/mobile-landing.png" alt="The landing page on a phone" width="100%" /></td>
 <td width="25%"><img src="docs/screenshots/mobile-overview.png" alt="The dashboard on a phone" width="100%" /></td>
-<td width="25%"><img src="docs/screenshots/mobile-ask.png" alt="Ask InsightFlow on a phone" width="100%" /></td>
-<td width="25%"><img src="docs/screenshots/mobile-navigation.png" alt="The navigation drawer on a phone" width="100%" /></td>
+<td width="25%"><img src="docs/screenshots/mobile-ask.png" alt="An Ask InsightFlow answer on a phone" width="100%" /></td>
+<td width="25%"><img src="docs/screenshots/mobile-investigation.png" alt="An anomaly investigation on a phone" width="100%" /></td>
 </tr>
 </table>
 
 ---
 
 ## What you can do
+
+<img src="docs/screenshots/section-features.png" alt="The landing page's product section: An analytics engine, with an AI that explains it, above four cards built from real captures: know what changed, ranked; ask in plain English; catch what's unusual; investigate why. Beneath them, board-ready reports, evidence on every figure, and works with the AI off" width="100%" />
+
+<br />
 
 <table>
 <tr>
@@ -322,15 +345,7 @@ deleted automatically.
 
 ## How it works
 
-<table>
-<tr>
-<td width="20%" valign="top" align="center"><b>01</b><br /><br /><b>Data</b><br /><sub>Your file is parsed, profiled, and its columns given meaning — which you confirm.</sub></td>
-<td width="20%" valign="top" align="center"><b>02</b><br /><br /><b>Analysis</b><br /><sub>The engine computes metrics, trends, segments and anomalies in pandas. Tested against known answers.</sub></td>
-<td width="20%" valign="top" align="center"><b>03</b><br /><br /><b>Insight</b><br /><sub>Findings are ranked, and each carries the evidence and the named calculation behind it.</sub></td>
-<td width="20%" valign="top" align="center"><b>04</b><br /><br /><b>Explanation</b><br /><sub>The model phrases the findings. What it writes is checked against the evidence before you see it.</sub></td>
-<td width="20%" valign="top" align="center"><b>05</b><br /><br /><b>Action</b><br /><sub>What to check next — hedged as a hypothesis, never stated as a cause the data cannot prove.</sub></td>
-</tr>
-</table>
+<img src="docs/screenshots/section-how-it-works.png" alt="From a spreadsheet to a decision, in four steps. 01 Upload your data: CSV or Excel, and you are shown what each column was read as before anything runs. 02 The engine analyses it: metrics, trends, segments and anomalies, only where your columns support them. 03 See what moved: every change ranked by how much of the total it accounts for. 04 Ask and investigate: drill into any finding and ask follow-ups in plain English." width="100%" />
 
 ---
 
@@ -340,6 +355,8 @@ Prompts ask a model to behave. They do not make it behave. So the rule that
 InsightFlow will not invent a figure is not written in a prompt — it is a
 validator that runs on the model's output, and it discards anything it cannot
 trace back to the computed evidence.
+
+<img src="docs/screenshots/section-evidence.png" alt="AI explains your data. It doesn't invent it. Beside the claim, the answer pipeline: your file, whose rows never leave that step; the analytics engine, which computes every figure; the evidence bundle of aggregates and labels only; the language model, which phrases what was found after the numbers exist; the verifier, which discards unsupported figures; and your answer, with the evidence attached" width="100%" />
 
 Here is real output from the sample dataset:
 
@@ -376,6 +393,10 @@ and a sweep of 27 questions at four time grains asserting that *every figure the
 engine writes is one it recorded*. That sweep found three real defects. The
 source is [`backend/app/ai/guardrails.py`](backend/app/ai/guardrails.py), and the
 full account is in [AI guardrails](docs/AI_GUARDRAILS.md).
+
+### Your data stays yours
+
+<img src="docs/screenshots/section-security.png" alt="Your business data stays yours: aggregates, not rows, so the AI never receives the rows of your file; run the model locally so nothing leaves your machine; isolated by workspace, with access enforced in the backend on every request; and see what is sent, in Settings. Beneath, the statement that InsightFlow AI holds no SOC 2, ISO 27001, HIPAA or GDPR certification" width="100%" />
 
 ---
 
@@ -432,7 +453,7 @@ full account is in [AI guardrails](docs/AI_GUARDRAILS.md).
 
 <table>
 <tr>
-<td align="center" width="118"><img src="https://cdn.simpleicons.org/pytest/0A9EDC/0A9EDC" width="42" height="42" alt="pytest" /><br /><sub><b>pytest</b><br />299 tests</sub></td>
+<td align="center" width="118"><img src="https://cdn.simpleicons.org/pytest/0A9EDC/0A9EDC" width="42" height="42" alt="pytest" /><br /><sub><b>pytest</b><br />300 tests</sub></td>
 <td align="center" width="118"><img src="https://cdn.simpleicons.org/vitest/6E9F18/9BD62F" width="42" height="42" alt="Vitest" /><br /><sub><b>Vitest</b><br />4</sub></td>
 <td align="center" width="118"><img src="https://cdn.simpleicons.org/eslint/4B32C3/8b7ae8" width="42" height="42" alt="ESLint" /><br /><sub><b>ESLint</b><br />9</sub></td>
 <td align="center" width="118"><img src="https://cdn.simpleicons.org/vercel/000000/ffffff" width="42" height="42" alt="Vercel" /><br /><sub><b>Vercel</b><br />deployment</sub></td>
@@ -487,7 +508,7 @@ what coincided with it.
 | **Arithmetic under test**              | Known datasets with hand-verified answers — January 1,000 to February 1,200 must return exactly 20%. A weekly-grain bug that silently zeroed every figure is now pinned by a test that every grain preserves the total.                         |
 | **Authorization by construction**      | Every workspace resource is probed in tests with a *valid* id from another tenant. Cross-tenant reads answer 404, never 403 — a 403 would confirm the id exists.                                                  |
 | **It degrades honestly**               | A dead provider, a timeout or malformed JSON all fall back to the engine's own answer, and the interface says which one you are reading: "Written from the computed analysis" or "Explained by *model*".        |
-| **Tested where it matters**            | 299 backend tests, 80 frontend tests, 11 browser end-to-end tests, and a full-stack acceptance script that drives the product through the Next.js layer with a real session cookie.                              |
+| **Tested where it matters**            | 300 backend tests, 80 frontend tests, 11 browser end-to-end tests, and a full-stack acceptance script that drives the product through the Next.js layer with a real session cookie.                              |
 | **Free to run, end to end**            | One Vercel project for both services and one Neon database, with no credit card. The backend has no public address; the frontend reaches it through a service binding.                                           |
 
 ---
@@ -527,7 +548,7 @@ one Vercel project serving the Next.js frontend and the FastAPI backend, with
 Neon PostgreSQL. The health endpoint reports the database as reachable and the
 AI provider (Groq, `openai/gpt-oss-120b`) as available.
 
-- 299 backend tests passing, covering analytical correctness, tenant isolation,
+- 300 backend tests passing, covering analytical correctness, tenant isolation,
   AI safety and adversarial attacks
 - 80 frontend tests, with typecheck and lint clean under `npm run check`
 - 11 end-to-end tests of the full browser journey in Chromium
