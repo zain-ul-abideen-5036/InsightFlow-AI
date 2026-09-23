@@ -1,64 +1,93 @@
+import * as React from "react";
+
 import { cn } from "@/lib/utils";
 
 /**
  * The InsightFlow mark.
  *
- * A quiet signal resolving into one bright point.
+ * Many rows converging into one point.
  *
- * The line is the data — understated, four moves, a dip and a recovery, drawn
- * at half opacity because in this product the data is the input, not the
- * output. The point is the finding: the single verified datum the whole
- * product exists to produce. It is the only saturated element in the mark, it
- * is knocked out of the line rather than sitting on top of it, and it is what
- * the eye lands on at any size. That is the product's argument in two shapes.
+ * Three lines enter from the left — the rows of a spreadsheet — and bend
+ * together into a single bright datum: the verified finding the whole product
+ * exists to produce. The centre row runs straight and brightest; the outer
+ * rows are quieter and curve in to meet it. That is the product's argument in
+ * one shape: the engine reduces the file to a figure you can trust.
+ *
+ * It is made of the same materials as the site: an obsidian tile lit from
+ * above with a fine glass edge, rows in white that strengthen as they
+ * converge, and blue used only as light — the datum glows, nothing else is
+ * coloured. A dark tile reads on the dark marketing pages and stands out on
+ * the light application chrome, so it needs no theme-dependent inversion.
  *
  * ---
  *
- * **Why it is drawn this way and not with `currentColor`.**
- *
- * The previous mark filled its container with `currentColor` and drew the
- * glyph in hard-coded white. In the sidebar `currentColor` resolves to the
- * foreground, which in dark mode is near-white — so the mark rendered as a
- * white square with invisible white contents on every authenticated screen.
- *
- * The container and the glyph are therefore separate, theme-aware values:
- *
- * - **ink** (default) — dark container, light glyph. For light surfaces.
- * - **paper** — light container, dark glyph. For dark or coloured surfaces.
- * - **auto** — follows the active theme via CSS custom properties, which is
- *   what almost every caller wants and what `Logo` uses.
- *
- * There is no `currentColor` variant, because a two-tone mark cannot have one.
+ * **Why the container is never `currentColor`.** An earlier mark filled its
+ * container with `currentColor` and hard-coded the glyph to white; in the
+ * dark sidebar that rendered a white square with invisible contents. Every
+ * tone below gives the container and the glyph explicitly different paints.
  */
 
-type MarkTone = "auto" | "ink" | "paper" | "brand";
+type MarkTone = "auto" | "brand" | "ink" | "paper";
 
-/** Container fill, glyph stroke, and datum fill for each tone. */
-const TONES: Record<MarkTone, { box: string; line: string; datum: string }> = {
-  // `auto` reads tokens defined in globals.css, so it flips with the theme.
-  auto: {
-    box: "hsl(var(--logo-box))",
-    line: "hsl(var(--logo-line))",
-    datum: "hsl(var(--logo-datum))",
-  },
-  ink: { box: "#0B1220", line: "#FFFFFF", datum: "#3B82F6" },
-  paper: { box: "#FFFFFF", line: "#0B1220", datum: "#2563EB" },
-  brand: { box: "#2563EB", line: "#FFFFFF", datum: "#FFFFFF" },
+type Paint = {
+  /** Container fill: a solid colour, or null for the obsidian gradient. */
+  box: string | null;
+  /** Row colour; the rows fade in from the left with this as their end. */
+  row: string;
+  /** The datum's core and the glow around it. */
+  datum: string;
+  glow: string;
+  /** Glass edge opacity at the top and bottom of the tile. */
+  edge: [number, number];
+  edgeColor: string;
 };
 
+const OBSIDIAN: Paint = {
+  box: null,
+  row: "#FFFFFF",
+  datum: "#4C8DFF",
+  glow: "#3B82F6",
+  edge: [0.28, 0.05],
+  edgeColor: "#FFFFFF",
+};
+
+const TONES: Record<MarkTone, Paint> = {
+  // `auto` is the obsidian tile: it reads on every surface, so it no longer
+  // needs to follow the theme.
+  auto: OBSIDIAN,
+  brand: OBSIDIAN,
+  ink: { ...OBSIDIAN, box: "#0B1220" },
+  // For placing the mark on a dark or coloured plate of someone else's.
+  paper: {
+    box: "#FFFFFF",
+    row: "#0B1220",
+    datum: "#2563EB",
+    glow: "#3B82F6",
+    edge: [0.1, 0.06],
+    edgeColor: "#0B1220",
+  },
+};
+
+/** The obsidian tile's gradient stops, top to bottom. */
+export const MARK_GRADIENT = { from: "#1C2438", to: "#080C16" } as const;
+
 /**
- * The four moves of the signal line, and where its point lands.
+ * The mark's geometry, on a 32-unit grid.
  *
- * Held in constants so the favicon, the OG image and the app icon are drawn
- * from the same geometry as the component rather than from a copy of it that
- * quietly drifts.
+ * Held in one constant so the favicon, the iOS icon and the social card are
+ * drawn from the same shapes as the component. `tests/brand.test.tsx` fails
+ * if any of them drifts.
  */
 export const MARK_GEOMETRY = {
   viewBox: "0 0 32 32",
-  corner: 8.6,
-  line: "M6.8 21.9 L12.5 16.2 L16.3 20 L20.9 13",
-  lineWidth: 2.7,
-  datum: { cx: 23, cy: 10, r: 3.1, knockout: 5.5 },
+  corner: 9,
+  rows: {
+    top: "M7 10.5 H11.5 C15.2 10.5 16.2 16 19 16",
+    centre: "M7 16 H19",
+    bottom: "M7 21.5 H11.5 C15.2 21.5 16.2 16 19 16",
+  },
+  lineWidth: 2.3,
+  datum: { cx: 23.6, cy: 16, r: 3, glow: 6.5, spark: 1 },
 } as const;
 
 export function LogoMark({
@@ -67,8 +96,11 @@ export function LogoMark({
   className,
   ...props
 }: React.SVGProps<SVGSVGElement> & { tone?: MarkTone; title?: string }) {
-  const { box, line, datum } = TONES[tone];
+  const paint = TONES[tone];
   const g = MARK_GEOMETRY;
+  const d = g.datum;
+  // Several marks can share a page, so every gradient needs its own id.
+  const id = `if-mark-${React.useId().replace(/:/g, "")}`;
 
   return (
     <svg
@@ -82,39 +114,60 @@ export function LogoMark({
       {...props}
     >
       {title ? <title>{title}</title> : null}
-      <rect width="32" height="32" rx={g.corner} fill={box} />
-      <path
-        d={g.line}
-        stroke={line}
-        strokeOpacity="0.5"
-        strokeWidth={g.lineWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* The datum is knocked out of the line, not drawn over it: the finding
-          interrupts the data rather than decorating it. */}
-      <circle cx={g.datum.cx} cy={g.datum.cy} r={g.datum.knockout} fill={box} />
-      <circle cx={g.datum.cx} cy={g.datum.cy} r={g.datum.r} fill={datum} />
+      <defs>
+        <linearGradient id={`${id}-tile`} x1="16" y1="0" x2="16" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stopColor={MARK_GRADIENT.from} />
+          <stop offset="1" stopColor={MARK_GRADIENT.to} />
+        </linearGradient>
+        <linearGradient id={`${id}-edge`} x1="16" y1="0" x2="16" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stopColor={paint.edgeColor} stopOpacity={paint.edge[0]} />
+          <stop offset="1" stopColor={paint.edgeColor} stopOpacity={paint.edge[1]} />
+        </linearGradient>
+        {/* The rows strengthen as they converge: data resolving into a finding. */}
+        <linearGradient id={`${id}-outer`} x1="7" y1="0" x2="19" y2="0" gradientUnits="userSpaceOnUse">
+          <stop stopColor={paint.row} stopOpacity="0.32" />
+          <stop offset="1" stopColor={paint.row} stopOpacity="0.78" />
+        </linearGradient>
+        <linearGradient id={`${id}-centre`} x1="7" y1="0" x2="19" y2="0" gradientUnits="userSpaceOnUse">
+          <stop stopColor={paint.row} stopOpacity="0.6" />
+          <stop offset="1" stopColor={paint.row} />
+        </linearGradient>
+        <radialGradient id={`${id}-glow`} cx={d.cx} cy={d.cy} r={d.glow} gradientUnits="userSpaceOnUse">
+          <stop stopColor={paint.glow} stopOpacity="0.75" />
+          <stop offset="1" stopColor={paint.glow} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="32" height="32" rx={g.corner} fill={paint.box ?? `url(#${id}-tile)`} />
+      <rect x="0.5" y="0.5" width="31" height="31" rx={g.corner - 0.5} stroke={`url(#${id}-edge)`} />
+      <circle cx={d.cx} cy={d.cy} r={d.glow} fill={`url(#${id}-glow)`} />
+      {/* Outer rows first, so the centre row is drawn over the point where
+          they meet. */}
+      <path d={g.rows.top} stroke={`url(#${id}-outer)`} strokeWidth={g.lineWidth} strokeLinecap="round" />
+      <path d={g.rows.bottom} stroke={`url(#${id}-outer)`} strokeWidth={g.lineWidth} strokeLinecap="round" />
+      <path d={g.rows.centre} stroke={`url(#${id}-centre)`} strokeWidth={g.lineWidth} strokeLinecap="round" />
+      <circle cx={d.cx} cy={d.cy} r={d.r} fill={paint.datum} />
+      {/* A catch-light on the datum, so it reads as a lit point, not a dot. */}
+      <circle cx={d.cx - 0.8} cy={d.cy - 0.8} r={d.spark} fill="#FFFFFF" fillOpacity="0.9" />
     </svg>
   );
 }
 
 const MARK_SIZE = { xs: "size-5", sm: "size-6", default: "size-7", lg: "size-9" };
 const TEXT_SIZE = {
-  xs: "text-[13px]",
-  sm: "text-[14.5px]",
-  default: "text-[16px]",
-  lg: "text-xl",
+  xs: "text-[13.5px]",
+  sm: "text-[15px]",
+  default: "text-[17px]",
+  lg: "text-[21px]",
 };
 const GAP = { xs: "gap-1.5", sm: "gap-2", default: "gap-2.5", lg: "gap-3" };
 
 /**
  * The full lock-up.
  *
- * `InsightFlow` is set at 640 weight with tight optical tracking; `AI` is a
- * suffix, not part of the name, so it is lighter, quieter, and separated by a
- * little more than a word space. Baselines are aligned by the flex row rather
- * than by eye.
+ * `InsightFlow` is set in the display face at 600 with tight tracking, so the
+ * wordmark belongs to the same family as the headlines. `AI` is a suffix, not
+ * part of the name: lighter, quieter, and separated by a little more than a
+ * word space.
  */
 export function Logo({
   className,
@@ -137,12 +190,12 @@ export function Logo({
       {showWordmark ? (
         <span
           className={cn(
-            "font-semibold leading-none tracking-[-0.022em] text-foreground",
+            "font-display font-semibold leading-none tracking-[-0.03em] text-foreground",
             TEXT_SIZE[size],
           )}
         >
           InsightFlow
-          <span className="ml-[0.3em] font-medium tracking-normal text-muted-foreground/75">
+          <span className="ml-[0.28em] font-medium tracking-normal text-muted-foreground/70">
             AI
           </span>
         </span>

@@ -28,26 +28,52 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
  * `tests/brand.test.tsx`, which fails if they drift apart.
  */
 const GEOMETRY = {
-  corner: 8.6,
-  line: "M6.8 21.9 L12.5 16.2 L16.3 20 L20.9 13",
-  lineWidth: 2.7,
-  datum: { cx: 23, cy: 10, r: 3.1, knockout: 5.5 },
+  corner: 9,
+  rows: {
+    top: "M7 10.5 H11.5 C15.2 10.5 16.2 16 19 16",
+    centre: "M7 16 H19",
+    bottom: "M7 21.5 H11.5 C15.2 21.5 16.2 16 19 16",
+  },
+  lineWidth: 2.3,
+  datum: { cx: 23.6, cy: 16, r: 3, glow: 6.5, spark: 1 },
 };
 
-/** The mark, as standalone SVG, in a chosen pair of tones. */
-function mark({ box, line, datum, withBox = true }) {
-  const d = GEOMETRY.datum;
+/**
+ * The obsidian tile: many rows converging into one lit point.
+ * `edge: false` drops the glass edge, for the iOS icon, which iOS masks itself.
+ */
+function mark({ edge = true, corner = GEOMETRY.corner } = {}) {
+  const g = GEOMETRY;
+  const d = g.datum;
   return `
 <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  ${withBox ? `<rect width="32" height="32" rx="${GEOMETRY.corner}" fill="${box}"/>` : ""}
-  <path d="${GEOMETRY.line}" stroke="${line}" stroke-opacity="0.5"
-        stroke-width="${GEOMETRY.lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="${d.cx}" cy="${d.cy}" r="${d.knockout}" fill="${box}"/>
-  <circle cx="${d.cx}" cy="${d.cy}" r="${d.r}" fill="${datum}"/>
+  <defs>
+    <linearGradient id="tile" x1="16" y1="0" x2="16" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1C2438"/><stop offset="1" stop-color="#080C16"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="16" y1="0" x2="16" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.28"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="outer" x1="7" y1="0" x2="19" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.32"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.78"/>
+    </linearGradient>
+    <linearGradient id="centre" x1="7" y1="0" x2="19" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.6"/><stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="${d.cx}" cy="${d.cy}" r="${d.glow}" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6" stop-opacity="0.75"/><stop offset="1" stop-color="#3B82F6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" rx="${corner}" fill="url(#tile)"/>
+  ${edge ? `<rect x="0.5" y="0.5" width="31" height="31" rx="${corner - 0.5}" stroke="url(#edge)"/>` : ""}
+  <circle cx="${d.cx}" cy="${d.cy}" r="${d.glow}" fill="url(#glow)"/>
+  <path d="${g.rows.top}" stroke="url(#outer)" stroke-width="${g.lineWidth}" stroke-linecap="round"/>
+  <path d="${g.rows.bottom}" stroke="url(#outer)" stroke-width="${g.lineWidth}" stroke-linecap="round"/>
+  <path d="${g.rows.centre}" stroke="url(#centre)" stroke-width="${g.lineWidth}" stroke-linecap="round"/>
+  <circle cx="${d.cx}" cy="${d.cy}" r="${d.r}" fill="#4C8DFF"/>
+  <circle cx="${d.cx - 0.8}" cy="${d.cy - 0.8}" r="${d.spark}" fill="#FFFFFF" fill-opacity="0.9"/>
 </svg>`;
 }
-
-const INK = { box: "#0B1220", line: "#FFFFFF", datum: "#3B82F6" };
 
 const FONT_STACK = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
 
@@ -99,7 +125,7 @@ const ogCard = `<!doctype html>
 </style></head><body>
   <div class="grid"></div>
   <div class="inner">
-    <div class="brand">${mark(INK)}<div class="wordmark">InsightFlow<span>AI</span></div></div>
+    <div class="brand">${mark()}<div class="wordmark">InsightFlow<span>AI</span></div></div>
     <div>
       <h1>Understand your business.<br><span class="muted">Act on the data.</span></h1>
       <p>Upload your business data, see what changed, investigate why, and ask
@@ -115,17 +141,15 @@ const ogCard = `<!doctype html>
 /**
  * The iOS home-screen icon.
  *
- * Bled to the edges rather than centred inside a coloured plate: iOS applies
- * its own mask, and an inset mark inside that mask reads as a sticker.
+ * The tile bled square to the edges: iOS applies its own rounded mask, and a
+ * pre-rounded tile inside that mask reads as a sticker.
  */
 const appleIcon = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; }
-  body { width: 180px; height: 180px; background: #0B1220; }
+  body { width: 180px; height: 180px; background: #080C16; }
   svg { width: 180px; height: 180px; display: block; }
-</style></head><body>${mark({ ...INK, withBox: false })
-  .replace('viewBox="0 0 32 32"', 'viewBox="0 0 32 32"')
-  .replace("<svg ", '<svg style="background:#0B1220" ')}</body></html>`;
+</style></head><body>${mark({ edge: false, corner: 0 })}</body></html>`;
 
 async function render(browser, html, { width, height, path }) {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 
 import { Providers } from "@/app/providers";
 import { SITE_URL } from "@/lib/site";
@@ -9,6 +9,20 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+/**
+ * The display face, for marketing headlines only.
+ *
+ * Inter Tight is Inter's display cut: the same skeleton with spacing drawn for
+ * large sizes, so a 72px headline sits tight without fighting the body text
+ * set in Inter beside it. The application never uses it.
+ */
+const display = Inter_Tight({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -87,7 +101,7 @@ const themeScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${display.variable} ${mono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
