@@ -353,6 +353,69 @@
     );
   }
 
+  /**
+   * Marketing display type.
+   *
+   * The serif is set tight and large; below ~28px it loses its contrast and
+   * should not be used. The italic is the only emphasis the headlines use.
+   */
+  .display {
+    @apply font-display font-normal;
+    letter-spacing: -0.006em;
+    line-height: 1;
+  }
+  .display em {
+    @apply font-display italic;
+  }
+
+  /** A section index — "01 · The problem" — in the mono face. */
+  .kicker {
+    @apply inline-flex items-center gap-2.5 font-mono text-[11px] font-medium uppercase
+           tracking-[0.16em] text-subtle-foreground;
+  }
+  .kicker::before {
+    @apply h-px w-6 bg-border-strong;
+    content: "";
+  }
+
+  /** A hairline that fades out at both ends, for dividing editorial bands. */
+  .rule-fade {
+    @apply h-px w-full;
+    background: linear-gradient(
+      to right,
+      transparent,
+      hsl(var(--border-strong)) 18%,
+      hsl(var(--border-strong)) 82%,
+      transparent
+    );
+  }
+
+  /** Fine dot field for the dark bands; masked so it never meets an edge. */
+  .dot-field {
+    background-image: radial-gradient(hsl(var(--inverse-foreground) / 0.13) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 20%, transparent 75%);
+  }
+
+  /**
+   * Scroll reveal, with no JavaScript.
+   *
+   * Driven by the view timeline, so it costs nothing on the main thread and
+   * cannot strand content: a browser without scroll timelines, or a user who
+   * asked for reduced motion, simply never gets the animation and sees the
+   * element at full opacity.
+   */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 70%;
+      }
+    }
+  }
+
   /** Loading placeholder with a single travelling highlight. */
   .shimmer {
     @apply relative overflow-hidden rounded-md bg-muted;
@@ -409,6 +472,17 @@
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
   }
   to {
     opacity: 1;

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 
 import { Providers } from "@/app/providers";
 import { SITE_URL } from "@/lib/site";
@@ -9,6 +9,21 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+/**
+ * The display face, for marketing headlines only.
+ *
+ * Inter carries the product; a single serif at display sizes gives the public
+ * pages an editorial voice without touching the density of the application.
+ * One weight, roman and italic — the italic is the accent, not a second colour.
+ */
+const display = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -87,7 +102,7 @@ const themeScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${display.variable} ${mono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

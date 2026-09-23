@@ -31,8 +31,10 @@ const SOURCE_URL =
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/75 backdrop-blur-xl">
-        <div className="container flex h-16 items-center justify-between gap-4">
+      {/* A floating bar rather than a full-width strip: it sits inside the
+          container, so the page reads edge to edge beneath it. */}
+      <header className="sticky top-0 z-40 px-3 pt-3 sm:px-4">
+        <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between gap-4 rounded-2xl border border-border/80 bg-background/70 pl-4 pr-2 shadow-e2 backdrop-blur-xl backdrop-saturate-150">
           <Link
             href="/"
             aria-label="InsightFlow AI home"
@@ -46,7 +48,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               <Link
                 key={href}
                 href={href}
-                className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground"
+                className="rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground"
               >
                 {label}
               </Link>
@@ -58,7 +60,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button size="sm" asChild>
+            <Button size="sm" variant="inverse" asChild className="rounded-xl px-4">
               <Link href="/signup">Try InsightFlow</Link>
             </Button>
           </div>
@@ -69,7 +71,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      <footer className="border-t border-border bg-surface-sunken/70 py-14">
+      <footer className="overflow-hidden border-t border-border bg-surface-sunken/70 pt-16">
         <div className="container">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <div className="space-y-3.5">
@@ -109,7 +111,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          <div className="mt-12 border-t border-border pt-6">
+          <div className="mt-14 border-t border-border py-6">
             <p className="text-center text-2xs leading-relaxed text-subtle-foreground">
               &copy; {new Date().getFullYear()} InsightFlow AI. Every figure shown on this
               site comes from the included NovaMart sample dataset, which is generated
@@ -118,6 +120,14 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             </p>
           </div>
         </div>
+
+        {/* The name, set once at poster scale and cropped by the page edge. */}
+        <p
+          aria-hidden="true"
+          className="display pointer-events-none -mb-[0.22em] select-none text-center text-[21vw] leading-none text-foreground/[0.06]"
+        >
+          InsightFlow
+        </p>
       </footer>
     </div>
   );
