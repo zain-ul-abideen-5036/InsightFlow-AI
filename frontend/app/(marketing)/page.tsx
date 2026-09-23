@@ -215,29 +215,46 @@ function Hero() {
 
 function Audience() {
   const groups = [
-    { icon: Store, label: "E-commerce teams" },
-    { icon: Building2, label: "Agencies" },
-    { icon: TrendingUp, label: "Founders" },
-    { icon: Users, label: "Operators" },
-    { icon: Layers, label: "Growing businesses" },
+    { icon: Store, label: "E-commerce teams", note: "Order exports" },
+    { icon: Building2, label: "Agencies", note: "Client reporting" },
+    { icon: TrendingUp, label: "Founders", note: "Board updates" },
+    { icon: Users, label: "Operators", note: "Weekly reviews" },
+    { icon: Layers, label: "Growing teams", note: "Month-end close" },
   ];
 
   return (
-    <section id="product" aria-label="Who InsightFlow is for" className="relative pb-4 pt-6">
+    <section id="product" aria-labelledby="audience-title" className="relative pb-4 pt-10">
       <div className="container">
-        <p className="text-center text-sm text-subtle-foreground">
-          Built for the people who own the numbers
-        </p>
-        {/* Deliberately not customer logos: this product has no customers yet,
-            and inventing social proof would undermine everything else here. */}
-        <ul className="mx-auto mt-6 flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-4">
-          {groups.map(({ icon: Icon, label }) => (
+        <div className="flex items-center gap-5">
+          <div className="hairline hidden flex-1 sm:block" aria-hidden="true" />
+          <h2
+            id="audience-title"
+            className="mx-auto text-center font-mono leading-relaxed sm:mx-0 sm:shrink-0 text-[11px] font-medium uppercase tracking-[0.18em] text-subtle-foreground"
+          >
+            Built for the people who own the numbers
+          </h2>
+          <div className="hairline hidden flex-1 sm:block" aria-hidden="true" />
+        </div>
+
+        {/* One divided rail rather than a loose row of labels. Deliberately
+            not customer logos: this product has no customers yet, and
+            inventing social proof would undermine everything else here. */}
+        <ul className="reveal mt-8 grid gap-px overflow-hidden sm:grid-cols-2 rounded-2xl border border-white/[0.07] bg-white/[0.06] shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.05)] lg:grid-cols-5">
+          {groups.map(({ icon: Icon, label, note }, index) => (
             <li
               key={label}
-              className="flex items-center gap-2.5 text-[15px] font-medium text-muted-foreground/80"
+              className={cn(
+                "flex items-center gap-3.5 bg-card/95 px-5 py-5",
+                index === groups.length - 1 && "sm:col-span-2 lg:col-span-1",
+              )}
             >
-              <Icon className="size-[18px] text-subtle-foreground" aria-hidden="true" />
-              {label}
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] text-primary shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.06)]">
+                <Icon className="size-[18px]" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[15px] font-medium leading-snug">{label}</p>
+                <p className="mt-0.5 text-xs text-subtle-foreground">{note}</p>
+              </div>
             </li>
           ))}
         </ul>
