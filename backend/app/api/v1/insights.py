@@ -29,6 +29,12 @@ _SEVERITY_RANK = {
     Severity.LOW: 3, Severity.INFO: 4,
 }
 
+# Where a cached investigation narrative records the provider and model that
+# wrote it. Stored inside the narrative's JSON rather than in columns of its
+# own because it only ever travels with that cache, and removed before the
+# narrative is returned.
+_WRITTEN_BY = "_written_by"
+
 
 @router.get("/insights", response_model=Page[InsightOut])
 def list_insights(
@@ -315,8 +321,18 @@ def investigate(
         )
 
     # A narrative written earlier is authoritative and costs nothing to serve.
+    # Who wrote it is cached beside it, so a revisit is attributed exactly as
+    # the first visit was. Narratives cached before that was recorded have no
+    # attribution, and say so by returning none.
     if cached_narrative:
-        return _respond(cached_narrative, is_fallback=False)
+        narrative = dict(cached_narrative)
+        written_by = narrative.pop(_WRITTEN_BY, None) or {}
+        return _respond(
+            narrative,
+            is_fallback=False,
+            provider=written_by.get("provider"),
+            model=written_by.get("model"),
+        )
 
     plain = _plain_narrative(investigation_dict)
 
@@ -354,7 +370,10 @@ def investigate(
         try:
             fresh = db.get(Anomaly, anomaly_id_value)
             if fresh is not None:
-                fresh.narrative = outcome.structured
+                fresh.narrative = {
+                    **outcome.structured,
+                    _WRITTEN_BY: {"provider": outcome.provider, "model": outcome.model},
+                }
                 db.commit()
         except Exception:  # noqa: BLE001
             db.rollback()

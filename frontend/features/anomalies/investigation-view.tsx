@@ -246,7 +246,9 @@ function InvestigationBody({
               ) : result.is_fallback ? (
                 "Written from the computed analysis"
               ) : (
-                `Explained by ${result.model ?? result.provider}`
+                // An explanation cached before its model was recorded has no
+                // name to show; say what wrote it rather than print "null".
+                `Explained by ${result.model || result.provider || "the AI model"}`
               )}
             </span>
           </footer>

@@ -211,7 +211,7 @@ should find in it.
 ## Testing
 
 ```bash
-# Backend — 299 tests
+# Backend — 300 tests
 cd backend && pytest
 
 # Frontend — 80 tests
@@ -322,7 +322,7 @@ backend/
     jobs/        analysis runner
     seed/        the NovaMart generator
   alembic/       migrations
-  tests/         299 tests
+  tests/         300 tests
   scripts/       acceptance_check.py
 
 frontend/

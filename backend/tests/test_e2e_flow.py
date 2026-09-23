@@ -455,6 +455,50 @@ class TestAnomalyInvestigation:
         assert second["anomaly"]["investigated_at"] is not None
         assert first["investigation"]["headline"] == second["investigation"]["headline"]
 
+    def test_a_cached_explanation_still_names_its_model(
+        self, client: TestClient, workspace_with_anomaly, monkeypatch
+    ):
+        """A revisit must say who wrote the prose, exactly as the first visit did.
+
+        The cached narrative used to be served with no provider and no model,
+        and the page — told the prose was generated but not by what — printed
+        "Explained by null" on every return to an investigation.
+        """
+        import app.ai.service as ai_service
+        from app.ai.service import AIOutcome, deterministic_investigation
+        from app.core.config import settings
+
+        calls = []
+
+        def fake_narrate(investigation, **_kwargs):
+            calls.append(1)
+            return AIOutcome(
+                structured=deterministic_investigation(investigation),
+                is_fallback=False,
+                provider="ollama",
+                model="qwen2.5:3b-instruct",
+            )
+
+        monkeypatch.setattr(settings, "ai_enabled", True)
+        monkeypatch.setattr(ai_service, "narrate_investigation", fake_narrate)
+
+        env = workspace_with_anomaly
+        target = client.get(
+            f"/api/v1/workspaces/{env['workspace_id']}/anomalies",
+            headers=env["owner"]["headers"],
+        ).json()["items"][0]["id"]
+        url = f"/api/v1/workspaces/{env['workspace_id']}/anomalies/{target}/investigate"
+
+        first = client.post(f"{url}?narrate=true", headers=env["owner"]["headers"]).json()
+        again = client.post(f"{url}?narrate=true", headers=env["owner"]["headers"]).json()
+
+        assert len(calls) == 1, "the second visit should be served from the cache"
+        assert first["model"] == again["model"] == "qwen2.5:3b-instruct"
+        assert again["provider"] == "ollama"
+        assert again["is_fallback"] is False
+        # The provenance is response metadata, not part of the narrative itself.
+        assert again["narrative"] == first["narrative"]
+
     def test_evidence_is_returned_without_waiting_for_the_model(
         self, client: TestClient, workspace_with_anomaly
     ):
