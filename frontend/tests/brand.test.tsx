@@ -21,18 +21,18 @@ const read = (relative: string) => readFileSync(join(root, relative), "utf8");
 describe("the mark", () => {
   it("is drawn from the same geometry in the favicon as in the component", () => {
     const favicon = read("app/icon.svg");
-    expect(favicon).toContain(MARK_GEOMETRY.line);
+    for (const row of Object.values(MARK_GEOMETRY.rows)) expect(favicon).toContain(row);
     expect(favicon).toContain(`rx="${MARK_GEOMETRY.corner}"`);
     expect(favicon).toContain(`stroke-width="${MARK_GEOMETRY.lineWidth}"`);
     expect(favicon).toContain(`r="${MARK_GEOMETRY.datum.r}"`);
-    expect(favicon).toContain(`r="${MARK_GEOMETRY.datum.knockout}"`);
+    expect(favicon).toContain(`r="${MARK_GEOMETRY.datum.glow}"`);
   });
 
   it("is drawn from the same geometry in the brand asset generator", () => {
     const generator = read("scripts/generate-brand-assets.mjs");
-    expect(generator).toContain(MARK_GEOMETRY.line);
-    expect(generator).toContain(String(MARK_GEOMETRY.corner));
-    expect(generator).toContain(String(MARK_GEOMETRY.lineWidth));
+    for (const row of Object.values(MARK_GEOMETRY.rows)) expect(generator).toContain(row);
+    expect(generator).toContain(`corner: ${MARK_GEOMETRY.corner}`);
+    expect(generator).toContain(`lineWidth: ${MARK_GEOMETRY.lineWidth}`);
   });
 
   /**
