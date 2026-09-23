@@ -133,7 +133,7 @@ test.describe("landing page", () => {
     expect(body).not.toMatch(/SOC 2 certified/i);
     expect(body).not.toMatch(/GDPR compliant/i);
     // It states plainly what it does *not* hold.
-    expect(body).toMatch(/does not hold SOC 2/i);
+    expect(body).toMatch(/(does not hold|holds no) SOC 2/i);
   });
 
   test("the first tab stop is a skip link", async ({ page }) => {
