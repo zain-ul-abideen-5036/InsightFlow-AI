@@ -176,6 +176,11 @@ jobs:
   security:
     name: Secret scan
     runs-on: ubuntu-latest
+    # On a pull request the action lists the PR's commits through the API,
+    # which the repository's default read-only token is not allowed to do.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
